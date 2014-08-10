@@ -27,3 +27,4 @@ TODO
 
 - Controller support
 - Large movie/show title text for selected item
+- Search
