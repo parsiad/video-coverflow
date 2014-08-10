@@ -234,7 +234,7 @@ class Browser(QtGui.QMainWindow):
 
                 if len(self._browser) > 0:
                     offset, mid = self.offsetMid()
-                    filename = os.path.basename(self._indexMapping[mid][0].getSinglePath())
+                    filename = os.path.basename(self._indexMapping[mid][0].getPath())
                     self._browser.setWindowTitle(self.tr( '%s - %s' % (Browser._title, filename) ))
                     # TODO: not sure why, but this does not work after a dialog is spawned
 
@@ -266,7 +266,13 @@ class Browser(QtGui.QMainWindow):
 
         def openCurrent(self):
             offset, mid = self.offsetMid()
-            path = self._indexMapping[mid][0].getSinglePath()
+            filePaths = self._indexMapping[mid][0].getFilePaths()
+            path = None
+            if len(filePaths) == 1:
+                path = filePaths[0]
+            else:
+                path, accept = QtGui.QInputDialog.getItem(self, 'Make selection', 'This title is associated with multiple video files. Please choose one to view:', filePaths)
+                if not accept: return
             if sys.platform.startswith('darwin'):
                 subprocess.call(('open', path))
             elif os.name == 'nt':
@@ -368,13 +374,9 @@ class Browser(QtGui.QMainWindow):
             self._filePaths = filePaths
             self._year = year if year is not None else ''
 
+        def getFilePaths(self): return self._filePaths[:]
+        def getPath(self): return self._path
         def getName(self): return self._name
-
-        def getSinglePath(self):
-            if len(self._filePaths) > 1:
-                return self._path
-            else:
-                return self._filePaths[0]
 
         def getCoverPath(self):
             identifier = ''.join([self._name, '__', self._year])
