@@ -10,7 +10,7 @@ import sys
 import time
 from threading import Thread
 
-from trie import Trie
+from trie import Node, Trie
 from urllib2 import urlopen
 from xml.etree import ElementTree
 
@@ -32,26 +32,26 @@ class Browser(QtGui.QMainWindow):
     _delimiters = ['.', '-', '_', ':', ',', ';']
     _pattern = re.compile('(\s*\[[^]]*\])*\s*(.*)')
     _halts = [ \
-        re.compile('season[0-9]?(?i)') \
-        , re.compile('S[0-9]{1,2}E[0-9]{1,2}(?i)') \
+          re.compile('^season[0-9]?$(?i)') \
+        , re.compile('^S[0-9]{1,2}E[0-9]{1,2}$(?i)') \
         , re.compile('DVD(?i)') \
         , re.compile('DVDR(?i)') \
         , re.compile('DVDRip(?i)') \
         , re.compile('DVDSCR(?i)') \
         , re.compile('XviD(?i)') \
         , re.compile('B[DR]Rip(?i)') \
-        , re.compile('B[DR](?i)') \
+        , re.compile('^B[DR]$(?i)') \
         , re.compile('WEBRip(?i)') \
         , re.compile('HDCAM(?i)') \
         , re.compile('HDRip(?i)') \
-        , re.compile('DD([0-9]\.[0-9])?') \
-        , re.compile('[0-9]{3,4}p') \
-        , re.compile('TS') \
-        , re.compile('US') \
-        , re.compile('HC') \
-        , re.compile('NL') \
-        , re.compile('Subs(?i)') \
-        , re.compile('\[[^]].*\]') \
+        , re.compile('^DD([0-9]\.[0-9])?$') \
+        , re.compile('^[0-9]{3,4}p$') \
+        , re.compile('^TS$') \
+        , re.compile('^US$') \
+        , re.compile('^HC$') \
+        , re.compile('^NL$') \
+        , re.compile('^Subs$(?i)') \
+        , re.compile('^\[[^]].*\]$') \
     ]
     _year = re.compile('\(?([0-9]{4})\)?')
 
@@ -85,8 +85,6 @@ class Browser(QtGui.QMainWindow):
             timer = QtCore.QTimer(self)
             timer.timeout.connect(self.focusTile)
             timer.start(20)
-
-            GL.glDisable(GL.GL_DEPTH_TEST)
 
         def minimumSizeHint(self):
             return QtCore.QSize(Browser.TileflowWidget._minWidth, Browser.TileflowWidget._minHeight)
@@ -183,6 +181,8 @@ class Browser(QtGui.QMainWindow):
 
             self.qglClearColor(self._clearColor)
             GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
+
+            GL.glDisable(GL.GL_DEPTH_TEST)
 
             GL.glMatrixMode(GL.GL_PROJECTION)
             GL.glLoadIdentity()
@@ -487,6 +487,8 @@ class Browser(QtGui.QMainWindow):
                 in_trie = False
                 break
             n = n.nodes[c]
+        if n.value is Node.no_value:
+            in_trie = False
 
         if in_trie:
             self._mediaTrie[name].append(media)
