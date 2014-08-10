@@ -73,9 +73,17 @@ class Browser(QtGui.QMainWindow):
         def __init__(self, parent, browser):
             QtOpenGL.QGLWidget.__init__(self, parent)
 
-            self._indexMapping = []
-
             self._browser = browser
+
+            self._lists = []
+            self._hasCleared = False
+            self.clear()
+
+        def clear(self):
+            for (ind, size) in self._lists:
+                GL.glDeleteLists(ind, size)
+
+            self._indexMapping = []
 
             self._clearColor = QtCore.Qt.black
             self._lastPos = QtCore.QPoint()
@@ -86,15 +94,16 @@ class Browser(QtGui.QMainWindow):
             timer.timeout.connect(self.focusTile)
             timer.start(20)
 
+            if self._hasCleared:
+                self.initializeGL()
+                self.updateGL()
+            self._hasCleared = True
+
         def minimumSizeHint(self):
             return QtCore.QSize(Browser.TileflowWidget._minWidth, Browser.TileflowWidget._minHeight)
 
         def sizeHint(self):
             return QtCore.QSize(self._browser.getWidth(), self._browser.getHeight())
-
-        def setClearColor(self, color):
-            self._clearColor = color
-            self.updateGL()
 
         def generateTile(self, ind, texture):
             GL.glNewList(ind, GL.GL_COMPILE)
@@ -143,7 +152,9 @@ class Browser(QtGui.QMainWindow):
                     ind += 1
 
             # generate lists
-            ind = self._missing_tile = GL.glGenLists( len(indexedTextures) + 1 )
+            size = len(indexedTextures) + 1
+            ind = self._missing_tile = GL.glGenLists(size)
+            self._lists.append( (ind, size) )
             defaultTexture = self.bindTexture(QtGui.QPixmap( Browser._defaultCoverPath ))
             self.generateTile(ind, defaultTexture)
             ind += 1
@@ -224,6 +235,7 @@ class Browser(QtGui.QMainWindow):
                     offset, mid = self.offsetMid()
                     filename = os.path.basename(self._indexMapping[mid][0].getSinglePath())
                     self._browser.setWindowTitle(self.tr( '%s - %s' % (Browser._title, filename) ))
+                    # TODO: not sure why, but this does not work after a dialog is spawned
 
         def resizeGL(self, width, height):
             self._browser.setWidth(width)
@@ -297,6 +309,7 @@ class Browser(QtGui.QMainWindow):
             media, ind = self._indexMapping[position]
             if media.getCover() is not None and ind == self._missing_tile:
                 newInd = GL.glGenLists(1)
+                self._lists.append( (newInd, 1) )
                 texture = self.bindTexture(QtGui.QPixmap( media.getCover() ))
                 self.generateTile(newInd, texture)
                 self._indexMapping[position] = (media, newInd)
@@ -386,16 +399,31 @@ class Browser(QtGui.QMainWindow):
         if not self._config.has_section(Browser._iniSection):
             self._config.add_section(Browser._iniSection)
 
+        self._tileflowCreated = False
+        if len(self.getPaths()) == 0:
+            self.openDirectories()
+
+        # populate
         self.populate()
 
         QtGui.QMainWindow.__init__(self, parent)
         self._tileflow = Browser.TileflowWidget(self, self)
         self._tileflow.setFocus()
+        self._tileflowCreated = True
         self.setCentralWidget(self._tileflow)
 
         QtGui.QShortcut(QtGui.QKeySequence(self.tr("Ctrl+F", "Fullscreen")), self, self.toggleFullScreen)
+        QtGui.QShortcut(QtGui.QKeySequence(self.tr("Ctrl+O", "Open")), self, self.openDirectories)
 
         self.updateFullScreen()
+
+    def openDirectories(self):
+        dialog = QtGui.QFileDialog()
+        dialog.setOption(QtGui.QFileDialog.ShowDirsOnly, True)
+        if dialog.exec_():
+            self.setPaths( dialog.selectedFiles() )
+        self.populate()
+        if self._tileflowCreated: self._tileflow.clear()
 
     def updateFullScreen(self):
         if self.getFullScreen(): self.showFullScreen()
@@ -433,8 +461,10 @@ class Browser(QtGui.QMainWindow):
         try: return bool(int(self._config.get(Browser._iniSection, 'fullscreen')))
         except: return bool(Browser._iniDefaults['fullscreen'])
 
+    def setPaths(self, paths): self._config.set(Browser._iniSection, 'paths', ','.join(paths))
+
     def getPaths(self):
-        try: return self._config.get(Browser._iniSection, 'paths').split(',')
+        try: return [ path for path in self._config.get(Browser._iniSection, 'paths').split(',') if path.strip() != '' ]
         except: return []
 
     def getExtensions(self):
