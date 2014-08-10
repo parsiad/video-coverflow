@@ -57,6 +57,7 @@ class Browser(QtGui.QMainWindow):
         _flank_spread = 0.4
         _visible_tiles = 10
         _direction = 1
+        _dscale = 0.1
 
         def __init__(self, parent, browser):
             QtOpenGL.QGLWidget.__init__(self, parent)
@@ -66,6 +67,7 @@ class Browser(QtGui.QMainWindow):
             self._browser = browser
 
             self._width = 0
+            self._height = 0
             self._clearColor = QtCore.Qt.black
             self._lastPos = QtCore.QPoint()
             self._offset = 3
@@ -208,6 +210,7 @@ class Browser(QtGui.QMainWindow):
 
         def resizeGL(self, width, height):
             self._width = width
+            self._height = height
             imagew = width * 0.45 / Browser.TileflowWidget._scale / 2.0
             imageh = height * 0.45 / Browser.TileflowWidget._scale / 2.0
 
@@ -247,6 +250,14 @@ class Browser(QtGui.QMainWindow):
                 os.startfile(path)
             elif os.name == 'posix':
                 subprocess.call(('xdg-open', path))
+
+        def wheelEvent(self, event):
+            if event.delta() < 0:
+                Browser.TileflowWidget._scale += Browser.TileflowWidget._dscale
+            else:
+                Browser.TileflowWidget._scale = max(0.1, Browser.TileflowWidget._scale - Browser.TileflowWidget._dscale)
+            self.resizeGL(self._width, self._height)
+            self.updateGL()
 
         def drawTile(self, position, offset):
             matrix = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]
