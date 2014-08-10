@@ -1,4 +1,5 @@
 import ConfigParser
+import ctypes
 import fnmatch
 import json
 import math
@@ -84,6 +85,8 @@ class Browser(QtGui.QMainWindow):
             timer = QtCore.QTimer(self)
             timer.timeout.connect(self.focusTile)
             timer.start(20)
+
+            GL.glDisable(GL.GL_DEPTH_TEST)
 
         def minimumSizeHint(self):
             return QtCore.QSize(Browser.TileflowWidget._minWidth, Browser.TileflowWidget._minHeight)
@@ -176,8 +179,11 @@ class Browser(QtGui.QMainWindow):
 
         def paintGL(self):
             scale = self._browser.getScale()
-
             ratio = float(self._browser.getWidth()) / self._browser.getHeight()
+
+            self.qglClearColor(self._clearColor)
+            GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
+
             GL.glMatrixMode(GL.GL_PROJECTION)
             GL.glLoadIdentity()
             GL.glOrtho(-ratio * scale, ratio * scale, -1 * scale, 1 * scale, 1, 3)
@@ -185,10 +191,6 @@ class Browser(QtGui.QMainWindow):
             GL.glMatrixMode(GL.GL_MODELVIEW)
             GL.glLoadIdentity()
             GLU.gluLookAt(0, 0, 2, 0, 0, 0, 0, 1, 0)
-            GL.glDisable(GL.GL_DEPTH_TEST)
-
-            self.qglClearColor(self._clearColor)
-            GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
 
             if len(self._browser) > 0:
 
