@@ -254,10 +254,25 @@ class Browser(QtGui.QMainWindow):
         def wheelEvent(self, event):
             if event.delta() < 0:
                 Browser.TileflowWidget._scale += Browser.TileflowWidget._dscale
+                if Browser.TileflowWidget._scale > 2:
+                    Browser.TileflowWidget._scale = 2
+                else:
+                    Browser.TileflowWidget._visible_tiles += 2
             else:
-                Browser.TileflowWidget._scale = max(0.1, Browser.TileflowWidget._scale - Browser.TileflowWidget._dscale)
+                Browser.TileflowWidget._scale -= 0.1
+                if Browser.TileflowWidget._scale < 0.5:
+                    Browser.TileflowWidget._scale = 0.5
+                else:
+                    Browser.TileflowWidget._visible_tiles -= 2
             self.resizeGL(self._width, self._height)
             self.updateGL()
+
+        def keyPressEvent(self, event):
+            try:
+                c = chr(event.key())
+                # TODO: search
+            except:
+                pass
 
         def drawTile(self, position, offset):
             matrix = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]
@@ -360,30 +375,13 @@ class Browser(QtGui.QMainWindow):
         if not self._config.has_section(Browser._iniSection):
             self._config.add_section(Browser._iniSection)
 
-        #self._mediaDict = {}
-        #self._mediaTrie = Trie()
-
         self.populate()
 
         QtGui.QMainWindow.__init__(self, parent)
         self._tileflow = Browser.TileflowWidget(self, self)
+        self._tileflow.setFocus()
         self.setCentralWidget(self._tileflow)
         self.setWindowTitle(self.tr(Browser._title))
-
-        '''
-        downloadAction = QtGui.QAction('Download Cover', self)
-        downloadAction.triggered.connect(self._tileflow.downloadCover)
-
-        exitAction = QtGui.QAction('Quit', self)
-        exitAction.setShortcut('Ctrl+Q')
-        exitAction.triggered.connect(self.close)
-
-        toolbar = self.addToolBar('')
-        toolbar.addAction(downloadAction)
-        toolbar.addAction(exitAction)
-        toolbar.setFloatable(False)
-        toolbar.setMovable(False)
-        '''
 
     def closeEvent(self, event):
         # write ini file
@@ -425,6 +423,9 @@ class Browser(QtGui.QMainWindow):
             l.append(token)
 
         name = ' '.join(l).strip()
+
+        # TODO: fix the empty name bug
+        if name == '': return
 
         # add media to trie and dict if necessary
         #if path not in self._mediaDict:
