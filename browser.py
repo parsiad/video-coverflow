@@ -26,7 +26,7 @@ class Browser(QtGui.QMainWindow):
     _iniFilename = 'config.ini'
     _iniPath = os.path.join(_configPath, _iniFilename)
     _iniSection = 'CUSTOM'
-    _iniDefaults = { 'width': '640', 'height': '320', 'fullscreen': '1', 'extensions': '.3gp,.asf,.avi,.flv,.m4v,.mkv,.mov,.mpeg,.mpg,.mpe,.mp4,.ogg,.ogv,.ogm,.rmi,.wmv', 'paths': '' }
+    _iniDefaults = { 'width': '640', 'height': '320', 'fullscreen': '1', 'scale': '0.7', 'extensions': '.3gp,.asf,.avi,.flv,.m4v,.mkv,.mov,.mpeg,.mpg,.mpe,.mp4,.ogg,.ogv,.ogm,.rmi,.wmv', 'paths': '' }
 
     _delimiters = ['.', '-', '_', ':', ',', ';']
     _pattern = re.compile('(\s*\[[^]]*\])*\s*(.*)')
@@ -52,7 +52,6 @@ class Browser(QtGui.QMainWindow):
 
     class TileflowWidget(QtOpenGL.QGLWidget):
 
-        _scale = 0.7
         _spreadImage = 0.14
         _flankSpread = 0.4
         _visibleTiles = 10
@@ -71,7 +70,7 @@ class Browser(QtGui.QMainWindow):
 
             self._clearColor = QtCore.Qt.black
             self._lastPos = QtCore.QPoint()
-            self._offset = 3
+            self._offset = 0
             self._mouseDown = False
 
             timer = QtCore.QTimer(self)
@@ -168,10 +167,12 @@ class Browser(QtGui.QMainWindow):
             return (offset, mid)
 
         def paintGL(self):
+            scale = self._browser.getScale()
+
             ratio = float(self._browser.getWidth()) / self._browser.getHeight()
             GL.glMatrixMode(GL.GL_PROJECTION)
             GL.glLoadIdentity()
-            GL.glOrtho(-ratio * Browser.TileflowWidget._scale, ratio * Browser.TileflowWidget._scale, -1 * Browser.TileflowWidget._scale, 1 * Browser.TileflowWidget._scale, 1, 3)
+            GL.glOrtho(-ratio * scale, ratio * scale, -1 * scale, 1 * scale, 1, 3)
 
             GL.glMatrixMode(GL.GL_MODELVIEW)
             GL.glLoadIdentity()
@@ -254,18 +255,15 @@ class Browser(QtGui.QMainWindow):
 
         def wheelEvent(self, event):
             if event.delta() < 0:
-                Browser.TileflowWidget._scale += Browser.TileflowWidget._dscale
-                if Browser.TileflowWidget._scale > 2:
-                    Browser.TileflowWidget._scale = 2
-                else:
-                    Browser.TileflowWidget._visibleTiles += 2
-            else:
-                Browser.TileflowWidget._scale -= 0.1
-                if Browser.TileflowWidget._scale < 0.5:
-                    Browser.TileflowWidget._scale = 0.5
-                else:
-                    Browser.TileflowWidget._visibleTiles -= 2
-            self.updateGL()
+                scale = self._browser.getScale()
+                scale = min(2, scale + Browser.TileflowWidget._dscale)
+                self._browser.setScale(scale)
+                self.updateGL()
+            elif event.delta() > 0:
+                scale = self._browser.getScale()
+                scale = max(0.5, scale - Browser.TileflowWidget._dscale)
+                self._browser.setScale(scale)
+                self.updateGL()
 
         def keyPressEvent(self, event):
             if event.key() == QtCore.Qt.Key_Left and not self._mouseDown:
@@ -406,13 +404,33 @@ class Browser(QtGui.QMainWindow):
     def __iter__(self): return self._mediaTrie.itervalues()
     def __len__(self): return self._count
 
+    def setScale(self, scale): self._config.set(Browser._iniSection, 'scale', str(scale))
+
+    def getScale(self):
+        try: return float(self._config.get(Browser._iniSection, 'scale'))
+        except: return float(Browser._iniDefaults['scale'])
+
+    def getWidth(self):
+        try: return int(self._config.get(Browser._iniSection, 'width'))
+        except: return int(Browser._iniDefaults['width'])
+    def getHeight(self):
+        try: return int(self._config.get(Browser._iniSection, 'height'))
+        except: return int(Browser._iniDefaults['height'])
+
     def setWidth(self, width): self._config.set(Browser._iniSection, 'width', str(width))
     def setHeight(self, height): self._config.set(Browser._iniSection, 'height', str(height))
-    def getWidth(self): return int(self._config.get(Browser._iniSection, 'width'))
-    def getHeight(self): return int(self._config.get(Browser._iniSection, 'height'))
-    def getFullScreen(self): return bool(int(self._config.get(Browser._iniSection, 'fullscreen')))
-    def getPaths(self): return self._config.get(Browser._iniSection, 'paths').split(',')
-    def getExtensions(self): return self._config.get(Browser._iniSection, 'extensions').split(',')
+
+    def getFullScreen(self):
+        try: return bool(int(self._config.get(Browser._iniSection, 'fullscreen')))
+        except: return bool(Browser._iniDefaults['fullscreen'])
+
+    def getPaths(self):
+        try: return self._config.get(Browser._iniSection, 'paths').split(',')
+        except: return []
+
+    def getExtensions(self):
+        try: return self._config.get(Browser._iniSection, 'extensions').split(',')
+        except: return Browser._iniDefaults['extensions'].split(',')
 
     def addMedia(self, name, path, filePaths):
         # gets rid of delimiters and tags (as best as possible)
