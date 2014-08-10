@@ -268,11 +268,11 @@ class Browser(QtGui.QMainWindow):
             self.updateGL()
 
         def keyPressEvent(self, event):
-            if event.key() == QtCore.Qt.Key_Left:
-                self._offset = max(0, self._offset - 1)
+            if event.key() == QtCore.Qt.Key_Left and not self._mouseDown:
+                self._offset = int( (self._offset - 1) % len(self._browser) )
                 self.updateGL()
-            elif event.key() == QtCore.Qt.Key_Right:
-                self._offset = min(self._offset + 1, len(self._browser) - 1)
+            elif event.key() == QtCore.Qt.Key_Right and not self._mouseDown:
+                self._offset = int( (self._offset + 1) % len(self._browser) )
                 self.updateGL()
             elif event.key() == QtCore.Qt.Key_Return:
                 self.openCurrent()
