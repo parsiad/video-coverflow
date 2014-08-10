@@ -33,16 +33,24 @@ class Browser(QtGui.QMainWindow):
     _halts = [ \
         re.compile('season[0-9]?(?i)') \
         , re.compile('S[0-9]{1,2}E[0-9]{1,2}(?i)') \
+        , re.compile('DVD(?i)') \
+        , re.compile('DVDR(?i)') \
         , re.compile('DVDRip(?i)') \
+        , re.compile('DVDSCR(?i)') \
         , re.compile('XviD(?i)') \
         , re.compile('B[DR]Rip(?i)') \
-        , re.compile('DVDSCR(?i)') \
+        , re.compile('B[DR](?i)') \
         , re.compile('WEBRip(?i)') \
         , re.compile('HDCAM(?i)') \
         , re.compile('HDRip(?i)') \
+        , re.compile('DD([0-9]\.[0-9])?') \
         , re.compile('[0-9]{3,4}p') \
         , re.compile('TS') \
         , re.compile('US') \
+        , re.compile('HC') \
+        , re.compile('NL') \
+        , re.compile('Subs(?i)') \
+        , re.compile('\[[^]].*\]') \
     ]
     _year = re.compile('\(?([0-9]{4})\)?')
 
@@ -353,7 +361,7 @@ class Browser(QtGui.QMainWindow):
                 return self._filePaths[0]
 
         def getCoverPath(self):
-            identifier = ''.join([self._name, '__', self._year])
+            identifier = ''.join([self._name, '.', self._year])
             path = os.path.join( Browser._configPath,  identifier)
             return path
 
@@ -382,7 +390,6 @@ class Browser(QtGui.QMainWindow):
         self._tileflow = Browser.TileflowWidget(self, self)
         self._tileflow.setFocus()
         self.setCentralWidget(self._tileflow)
-        self.setWindowTitle(self.tr(Browser._title))
 
         QtGui.QShortcut(QtGui.QKeySequence(self.tr("Ctrl+F", "Fullscreen")), self, self.toggleFullScreen)
 
