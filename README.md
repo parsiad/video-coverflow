@@ -12,7 +12,7 @@ Dragging the mouse left and right or using the arrow keys moves the coverflow. D
 
 One or more directories can be chosen with Ctrl+O. Upon first running the application, you will be prompted to pick one or more directories.
 
-Fine-grained control is available to those willing to edit ~/.video-coverflow/config.ini (this file is generated after running and closing the application once).
+Fine-grain control is available to those willing to edit ~/.video-coverflow/config.ini (this file is generated after running and closing the application once).
 
 Requirements
 ------------
