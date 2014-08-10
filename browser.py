@@ -82,6 +82,7 @@ class Browser(QtGui.QMainWindow):
         def clear(self):
             for (ind, size) in self._lists:
                 GL.glDeleteLists(ind, size)
+            self._lists = []
 
             self._indexMapping = []
 
@@ -418,10 +419,26 @@ class Browser(QtGui.QMainWindow):
         self.updateFullScreen()
 
     def openDirectories(self):
+
+        '''
         dialog = QtGui.QFileDialog()
         dialog.setOption(QtGui.QFileDialog.ShowDirsOnly, True)
         if dialog.exec_():
             self.setPaths( dialog.selectedFiles() )
+        '''
+
+        w = QtGui.QFileDialog()
+        w.setFileMode(QtGui.QFileDialog.DirectoryOnly)
+        w.setOption(QtGui.QFileDialog.DontUseNativeDialog, True)
+        l = w.findChild(QtGui.QListView, 'listView')
+        if l:
+            l.setSelectionMode(QtGui.QAbstractItemView.MultiSelection)
+        t = w.findChild(QtGui.QTreeView, 'treeView')
+        if t:
+            t.setSelectionMode(QtGui.QAbstractItemView.MultiSelection)
+        if w.exec_():
+            self.setPaths( w.selectedFiles() )
+
         self.populate()
         if self._tileflowCreated: self._tileflow.clear()
 
