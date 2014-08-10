@@ -14,3 +14,5 @@ To run video-coverflow, you will need:
 * PyOpenGL
 
 Currently, there is no GUI to use to pick movie directories, but you can specify them in the ~/.video-coverflow/config.ini file. To generate this file, run the application once and exit.
+
+Dragging the mouse left and right moves the coverflow. Double-clicking launches the video centered in the coverflow.
