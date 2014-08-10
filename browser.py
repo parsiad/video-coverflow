@@ -26,7 +26,7 @@ class Browser(QtGui.QMainWindow):
     _iniFilename = 'config.ini'
     _iniPath = os.path.join(_configPath, _iniFilename)
     _iniSection = 'CUSTOM'
-    _iniDefaults = { 'extensions': '.3gp,.asf,.avi,.flv,.m4v,.mkv,.mov,.mpeg,.mpg,.mpe,.mp4,.ogg,.ogv,.ogm,.rmi,.wmv', 'paths': '' }
+    _iniDefaults = { 'fullscreen': '1', 'extensions': '.3gp,.asf,.avi,.flv,.m4v,.mkv,.mov,.mpeg,.mpg,.mpe,.mp4,.ogg,.ogv,.ogm,.rmi,.wmv', 'paths': '' }
 
     _delimiters = ['.', '-', '_', ':', ',', ';']
     _pattern = re.compile('(\s*\[[^]]*\])*\s*(.*)')
@@ -167,6 +167,11 @@ class Browser(QtGui.QMainWindow):
             return (offset, mid)
 
         def paintGL(self):
+            ratio = float(self._width) / self._height
+            GL.glMatrixMode(GL.GL_PROJECTION)
+            GL.glLoadIdentity()
+            GL.glOrtho(-ratio * Browser.TileflowWidget._scale, ratio * Browser.TileflowWidget._scale, -1 * Browser.TileflowWidget._scale, 1 * Browser.TileflowWidget._scale, 1, 3)
+
             GL.glMatrixMode(GL.GL_MODELVIEW)
             GL.glLoadIdentity()
             GLU.gluLookAt(0, 0, 2, 0, 0, 0, 0, 1, 0)
@@ -211,14 +216,7 @@ class Browser(QtGui.QMainWindow):
         def resizeGL(self, width, height):
             self._width = width
             self._height = height
-            imagew = width * 0.45 / Browser.TileflowWidget._scale / 2.0
-            imageh = height * 0.45 / Browser.TileflowWidget._scale / 2.0
-
             GL.glViewport(0, 0, width, height)
-            ratio = float(width) / height
-            GL.glMatrixMode(GL.GL_PROJECTION)
-            GL.glLoadIdentity()
-            GL.glOrtho(-ratio * Browser.TileflowWidget._scale, ratio * Browser.TileflowWidget._scale, -1 * Browser.TileflowWidget._scale, 1 * Browser.TileflowWidget._scale, 1, 3)
 
         def mousePressEvent(self, event):
             self._lastPos = QtCore.QPoint(event.pos())
@@ -241,7 +239,7 @@ class Browser(QtGui.QMainWindow):
             #QtGui.QSound.play('')
             self._mouseDown = False
 
-        def mouseDoubleClickEvent(self, event):
+        def openCurrent(self):
             offset, mid = self.offsetMid()
             path = self._indexMapping[mid][0].getSinglePath()
             if sys.platform.startswith('darwin'):
@@ -250,6 +248,8 @@ class Browser(QtGui.QMainWindow):
                 os.startfile(path)
             elif os.name == 'posix':
                 subprocess.call(('xdg-open', path))
+
+        def mouseDoubleClickEvent(self, event): self.openCurrent()
 
         def wheelEvent(self, event):
             if event.delta() < 0:
@@ -268,11 +268,14 @@ class Browser(QtGui.QMainWindow):
             self.updateGL()
 
         def keyPressEvent(self, event):
-            try:
-                c = chr(event.key())
-                # TODO: search
-            except:
-                pass
+            if event.key() == QtCore.Qt.Key_Left:
+                self._offset = max(0, self._offset - 1)
+                self.updateGL()
+            elif event.key() == QtCore.Qt.Key_Right:
+                self._offset = min(self._offset + 1, len(self._browser) - 1)
+                self.updateGL()
+            elif event.key() == QtCore.Qt.Key_Return:
+                self.openCurrent()
 
         def drawTile(self, position, offset):
             matrix = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]
@@ -383,6 +386,18 @@ class Browser(QtGui.QMainWindow):
         self.setCentralWidget(self._tileflow)
         self.setWindowTitle(self.tr(Browser._title))
 
+        QtGui.QShortcut(QtGui.QKeySequence(self.tr("Ctrl+F", "Fullscreen")), self, self.toggleFullScreen)
+
+        self.updateFullScreen()
+
+    def updateFullScreen(self):
+        if self.getFullScreen(): self.showFullScreen()
+        else: self.showNormal()
+
+    def toggleFullScreen(self):
+        self._config.set( Browser._iniSection, 'fullscreen', str(int( not self.getFullScreen() )) )
+        self.updateFullScreen()
+
     def closeEvent(self, event):
         # write ini file
         with open(self._iniPath, 'wb') as f:
@@ -391,6 +406,7 @@ class Browser(QtGui.QMainWindow):
     def __iter__(self): return self._mediaTrie.itervalues()
     def __len__(self): return self._count
 
+    def getFullScreen(self): return bool(int(self._config.get(Browser._iniSection, 'fullscreen')))
     def getPaths(self): return self._config.get(Browser._iniSection, 'paths').split(',')
     def getExtensions(self): return self._config.get(Browser._iniSection, 'extensions').split(',')
 
