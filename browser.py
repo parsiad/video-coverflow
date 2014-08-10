@@ -363,7 +363,7 @@ class Browser(QtGui.QMainWindow):
                 return self._filePaths[0]
 
         def getCoverPath(self):
-            identifier = ''.join([self._name, '.', self._year])
+            identifier = ''.join([self._name, '__', self._year])
             path = os.path.join( Browser._configPath,  identifier)
             return path
 
