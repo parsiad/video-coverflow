@@ -26,7 +26,7 @@ class Browser(QtGui.QMainWindow):
     _iniFilename = 'config.ini'
     _iniPath = os.path.join(_configPath, _iniFilename)
     _iniSection = 'CUSTOM'
-    _iniDefaults = { 'fullscreen': '1', 'extensions': '.3gp,.asf,.avi,.flv,.m4v,.mkv,.mov,.mpeg,.mpg,.mpe,.mp4,.ogg,.ogv,.ogm,.rmi,.wmv', 'paths': '' }
+    _iniDefaults = { 'width': '640', 'height': '320', 'fullscreen': '1', 'extensions': '.3gp,.asf,.avi,.flv,.m4v,.mkv,.mov,.mpeg,.mpg,.mpe,.mp4,.ogg,.ogv,.ogm,.rmi,.wmv', 'paths': '' }
 
     _delimiters = ['.', '-', '_', ':', ',', ';']
     _pattern = re.compile('(\s*\[[^]]*\])*\s*(.*)')
@@ -53,11 +53,14 @@ class Browser(QtGui.QMainWindow):
     class TileflowWidget(QtOpenGL.QGLWidget):
 
         _scale = 0.7
-        _spread_image = 0.14
-        _flank_spread = 0.4
-        _visible_tiles = 10
+        _spreadImage = 0.14
+        _flankSpread = 0.4
+        _visibleTiles = 10
         _direction = 1
         _dscale = 0.1
+
+        _minWidth = 640
+        _minHeight = 320
 
         def __init__(self, parent, browser):
             QtOpenGL.QGLWidget.__init__(self, parent)
@@ -66,8 +69,6 @@ class Browser(QtGui.QMainWindow):
 
             self._browser = browser
 
-            self._width = 0
-            self._height = 0
             self._clearColor = QtCore.Qt.black
             self._lastPos = QtCore.QPoint()
             self._offset = 3
@@ -78,10 +79,10 @@ class Browser(QtGui.QMainWindow):
             timer.start(20)
 
         def minimumSizeHint(self):
-            return QtCore.QSize(640, 320)
+            return QtCore.QSize(Browser.TileflowWidget._minWidth, Browser.TileflowWidget._minHeight)
 
         def sizeHint(self):
-            return QtCore.QSize(640, 320)
+            return QtCore.QSize(self._browser.getWidth(), self._browser.getHeight())
 
         def setClearColor(self, color):
             self._clearColor = color
@@ -167,7 +168,7 @@ class Browser(QtGui.QMainWindow):
             return (offset, mid)
 
         def paintGL(self):
-            ratio = float(self._width) / self._height
+            ratio = float(self._browser.getWidth()) / self._browser.getHeight()
             GL.glMatrixMode(GL.GL_PROJECTION)
             GL.glLoadIdentity()
             GL.glOrtho(-ratio * Browser.TileflowWidget._scale, ratio * Browser.TileflowWidget._scale, -1 * Browser.TileflowWidget._scale, 1 * Browser.TileflowWidget._scale, 1, 3)
@@ -188,10 +189,10 @@ class Browser(QtGui.QMainWindow):
                 GL.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA)
 
                 offset, mid = self.offsetMid()
-                start_pos = mid - Browser.TileflowWidget._visible_tiles
+                start_pos = mid - Browser.TileflowWidget._visibleTiles
                 if start_pos < 0:
                     start_pos = 0
-                end_pos = mid + Browser.TileflowWidget._visible_tiles
+                end_pos = mid + Browser.TileflowWidget._visibleTiles
                 if end_pos > len(self._browser):
                     end_pos = len(self._browser)
                 for i in range(start_pos, mid)[::Browser.TileflowWidget._direction]:
@@ -214,8 +215,8 @@ class Browser(QtGui.QMainWindow):
                     self._browser.setWindowTitle(self.tr( '%s - %s' % (Browser._title, filename) ))
 
         def resizeGL(self, width, height):
-            self._width = width
-            self._height = height
+            self._browser.setWidth(width)
+            self._browser.setHeight(height)
             GL.glViewport(0, 0, width, height)
 
         def mousePressEvent(self, event):
@@ -224,7 +225,7 @@ class Browser(QtGui.QMainWindow):
 
         def mouseMoveEvent(self, event):
             dx = event.x() - self._lastPos.x()
-            offset = self._offset - float(dx) * 6 / (self._width * 0.6)
+            offset = self._offset - float(dx) * 6 / (self._browser.getWidth() * 0.6)
             if offset < 0:
                 self._offset = 0
             elif offset > len(self._browser) - 1:
@@ -257,14 +258,13 @@ class Browser(QtGui.QMainWindow):
                 if Browser.TileflowWidget._scale > 2:
                     Browser.TileflowWidget._scale = 2
                 else:
-                    Browser.TileflowWidget._visible_tiles += 2
+                    Browser.TileflowWidget._visibleTiles += 2
             else:
                 Browser.TileflowWidget._scale -= 0.1
                 if Browser.TileflowWidget._scale < 0.5:
                     Browser.TileflowWidget._scale = 0.5
                 else:
-                    Browser.TileflowWidget._visible_tiles -= 2
-            self.resizeGL(self._width, self._height)
+                    Browser.TileflowWidget._visibleTiles -= 2
             self.updateGL()
 
         def keyPressEvent(self, event):
@@ -279,12 +279,12 @@ class Browser(QtGui.QMainWindow):
 
         def drawTile(self, position, offset):
             matrix = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]
-            trans = offset * Browser.TileflowWidget._spread_image
-            f = offset * Browser.TileflowWidget._flank_spread
-            if (f > Browser.TileflowWidget._flank_spread):
-                f = Browser.TileflowWidget._flank_spread
-            elif (f < -Browser.TileflowWidget._flank_spread):
-                f = -Browser.TileflowWidget._flank_spread
+            trans = offset * Browser.TileflowWidget._spreadImage
+            f = offset * Browser.TileflowWidget._flankSpread
+            if (f > Browser.TileflowWidget._flankSpread):
+                f = Browser.TileflowWidget._flankSpread
+            elif (f < -Browser.TileflowWidget._flankSpread):
+                f = -Browser.TileflowWidget._flankSpread
 
             media, ind = self._indexMapping[position]
             if media.getCover() is not None and ind == self._missing_tile:
@@ -406,6 +406,10 @@ class Browser(QtGui.QMainWindow):
     def __iter__(self): return self._mediaTrie.itervalues()
     def __len__(self): return self._count
 
+    def setWidth(self, width): self._config.set(Browser._iniSection, 'width', str(width))
+    def setHeight(self, height): self._config.set(Browser._iniSection, 'height', str(height))
+    def getWidth(self): return int(self._config.get(Browser._iniSection, 'width'))
+    def getHeight(self): return int(self._config.get(Browser._iniSection, 'height'))
     def getFullScreen(self): return bool(int(self._config.get(Browser._iniSection, 'fullscreen')))
     def getPaths(self): return self._config.get(Browser._iniSection, 'paths').split(',')
     def getExtensions(self): return self._config.get(Browser._iniSection, 'extensions').split(',')
@@ -487,13 +491,13 @@ class Browser(QtGui.QMainWindow):
                         self.addMedia(name, fullPath, [fullPath])
                 else:
                     # directory
+                    filePaths = []
                     for root, directories, filenames in os.walk(fullPath):
-                        filePaths = []
                         for filename in filenames:
                             name, extension = os.path.splitext(filename)
                             if extension in extensions:
                                 filePaths.append(os.path.join(root, filename))
                         if len(filePaths) == 0:
                             continue
-                        self.addMedia(subpath, fullPath, filePaths)
+                    self.addMedia(subpath, fullPath, filePaths)
 
