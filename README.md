@@ -8,7 +8,7 @@ Downloads covers for movies and TV-shows using filenames and displays them in an
 Instructions
 ------------
 
-Dragging the mouse left and right or using the arrow keys moves the coverflow . Double-clicking or pressing the return key launches the video centered in the coverflow.
+Dragging the mouse left and right or using the arrow keys moves the coverflow. Double-clicking or pressing the return key launches the video centered in the coverflow.
 
 One or more directories can be chosen with Ctrl+O. Upon first running the application, you will be prompted to pick one or more directories.
 
