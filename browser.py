@@ -144,13 +144,12 @@ class Browser(QtGui.QMainWindow):
             # load images outside of glNewList/glEndList block
             indexedTextures = []
             ind = 0
-            for mediaList in self._browser:
-                for media in mediaList:
-                    coverPath = media.getCover()
-                    if coverPath is not None:
-                        texture = self.bindTexture(QtGui.QPixmap(coverPath))
-                        indexedTextures.append( (ind, texture) )
-                    ind += 1
+            for media in self._browser:
+                coverPath = media.getCover()
+                if coverPath is not None:
+                    texture = self.bindTexture(QtGui.QPixmap(coverPath))
+                    indexedTextures.append( (ind, texture) )
+                ind += 1
 
             # generate lists
             size = len(indexedTextures) + 1
@@ -165,13 +164,12 @@ class Browser(QtGui.QMainWindow):
 
             # map tiles to gl lists
             ind = self._missing_tile + 1
-            for mediaList in self._browser:
-                for media in mediaList:
-                    if media.getCover() is None:
-                        self._indexMapping.append((media, self._missing_tile))
-                    else:
-                        self._indexMapping.append((media, ind))
-                        ind += 1
+            for media in self._browser:
+                if media.getCover() is None:
+                    self._indexMapping.append((media, self._missing_tile))
+                else:
+                    self._indexMapping.append((media, ind))
+                    ind += 1
 
             # spawn thread
             t = Thread(target=self.downloadCoverDaemon)
@@ -234,9 +232,10 @@ class Browser(QtGui.QMainWindow):
 
                 if len(self._browser) > 0:
                     offset, mid = self.offsetMid()
-                    filename = os.path.basename(self._indexMapping[mid][0].getPath())
-                    self._browser.setWindowTitle(self.tr( '%s - %s' % (Browser._title, filename) ))
-                    # TODO: not sure why, but this does not work after a dialog is spawned
+                    media = self._indexMapping[mid][0]
+                    display = os.path.basename( ''.join([media.getName(), ' (', media.getYear(), ')']) )
+                    self._browser.setWindowTitle(self.tr( '%s - %s' % (Browser._title, display) ))
+                # TODO: not sure why, but this does not work after a dialog is spawned
 
         def resizeGL(self, width, height):
             self._browser.setWidth(width)
@@ -271,7 +270,7 @@ class Browser(QtGui.QMainWindow):
             if len(filePaths) == 1:
                 path = filePaths[0]
             else:
-                path, accept = QtGui.QInputDialog.getItem(self, 'Make selection', 'This title is associated with multiple video files. Please choose one to view:', filePaths)
+                path, accept = QtGui.QInputDialog.getItem(self, 'Make selection', 'This title is associated with multiple video files. Please choose one to view:', filePaths, 0, False)
                 if not accept: return
             if sys.platform.startswith('darwin'):
                 subprocess.call(('open', path))
@@ -368,18 +367,19 @@ class Browser(QtGui.QMainWindow):
 
     class Media:
 
-        def __init__(self, name, path, filePaths, year):
+        def __init__(self, name, year, filePaths):
             self._name = name
-            self._path = path
-            self._filePaths = filePaths
             self._year = year if year is not None else ''
+            self._filePaths = filePaths
+
+        def addFilePaths(self, filePaths): self._filePaths.extend(filePaths)
 
         def getFilePaths(self): return self._filePaths[:]
-        def getPath(self): return self._path
         def getName(self): return self._name
+        def getYear(self): return self._year
 
         def getCoverPath(self):
-            identifier = ''.join([self._name, '__', self._year])
+            identifier = ''.join([self._name, '_', self._year])
             path = os.path.join( Browser._configPath,  identifier)
             return path
 
@@ -490,7 +490,7 @@ class Browser(QtGui.QMainWindow):
         try: return self._config.get(Browser._iniSection, 'extensions').split(',')
         except: return Browser._iniDefaults['extensions'].split(',')
 
-    def addMedia(self, name, path, filePaths):
+    def addMedia(self, name, filePaths):
         # gets rid of delimiters and tags (as best as possible)
         l = []
         for c in name:
@@ -503,48 +503,27 @@ class Browser(QtGui.QMainWindow):
         stop = False
         year = None
         for token in tokens:
-
             m = Browser._year.search(token)
             if m:
                 stop = True
                 year = m.group(1)
                 break
-
             for halt in Browser._halts:
                 if halt.search(token):
                     stop = True
                     break
-
             if stop: break
             l.append(token)
+        newName = ' '.join(l).strip()
+        if newName != '': name = newName
 
-        name = ' '.join(l).strip()
-
-        # TODO: fix the empty name bug
-        if name == '': return
-
-        # add media to trie and dict if necessary
-        #if path not in self._mediaDict:
-        media = Browser.Media(name, path, filePaths, year)
-        #self._mediaDict[path] = media
-
-        # check to see if trie contains name
-        in_trie = True
-        n = self._mediaTrie.root
-        for c in name:
-            if c not in n.nodes:
-                in_trie = False
-                break
-            n = n.nodes[c]
-        if n.value is Node.no_value:
-            in_trie = False
-
-        if in_trie:
-            self._mediaTrie[name].append(media)
-        else:
-            self._mediaTrie[name] = [media]
-
-        self._count += 1
+        # key is of the form MOVIE[_YEAR]
+        key = ''.join([name, '_', year]) if year is not None else name
+        try:
+            self._mediaTrie[key].addFilePaths(filePaths)
+        except:
+            self._mediaTrie[key] = Browser.Media(name, year, filePaths)
+            self._count += 1
 
     def populate(self):
         self._count = 0
@@ -566,7 +545,7 @@ class Browser(QtGui.QMainWindow):
                     # file
                     name, extension = os.path.splitext(subpath)
                     if extension in extensions:
-                        self.addMedia(name, fullPath, [fullPath])
+                        self.addMedia(name, [fullPath])
                 else:
                     # directory
                     filePaths = []
@@ -577,5 +556,5 @@ class Browser(QtGui.QMainWindow):
                                 filePaths.append(os.path.join(root, filename))
                         if len(filePaths) == 0:
                             continue
-                    self.addMedia(subpath, fullPath, filePaths)
+                    self.addMedia(subpath, filePaths)
 
