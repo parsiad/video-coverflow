@@ -28,7 +28,7 @@ class Browser(QtGui.QMainWindow):
     _iniFilename = 'config.ini'
     _iniPath = os.path.join(_configPath, _iniFilename)
     _iniSection = 'CUSTOM'
-    _iniDefaults = { 'width': '640', 'height': '320', 'fullscreen': '1', 'scale': '0.7', 'fontFamily': 'Times', 'fontSize': '28', 'extensions': '.3gp,.asf,.avi,.flv,.m4v,.mkv,.mov,.mpeg,.mpg,.mpe,.mp4,.ogg,.ogv,.ogm,.rmi,.wmv' }
+    _iniDefaults = { 'width': '1024', 'height': '576', 'fullscreen': '0', 'scale': '0.5', 'extensions': '.3gp,.asf,.avi,.flv,.m4v,.mkv,.mov,.mpeg,.mpg,.mpe,.mp4,.ogg,.ogv,.ogm,.rmi,.wmv', 'css': 'QToolBar QLabel, QToolBar QLineEdit { font-size: 28px; } QToolBar { padding: 15px; background-color: black; border: 1px solid black; } QToolBar QLabel { color: white; } QToolBar QLineEdit { padding: 5px; background-color: white; color: black; border-radius: 5px; }' }
 
     _delimiters = ['.', '-', '_', ':', ',', ';']
     _pattern = re.compile('(\s*\[[^]]*\])*\s*(.*)')
@@ -59,6 +59,8 @@ class Browser(QtGui.QMainWindow):
     _sleep = 1
 
     _defaultCoverPath = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'film.png' )
+    _openIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'open.png' )
+    _fullScreenIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'fullscreen.png' )
 
     class TileflowWidget(QtOpenGL.QGLWidget):
 
@@ -269,6 +271,7 @@ class Browser(QtGui.QMainWindow):
             GL.glViewport(0, 0, width, height)
 
         def mousePressEvent(self, event):
+            self.setFocus()
             self._lastPos = QtCore.QPoint(event.pos())
             self._mouseDown = True
 
@@ -431,20 +434,34 @@ class Browser(QtGui.QMainWindow):
         self.setWindowTitle('Video Coverflow')
 
         # style
-        self.setStyleSheet("QToolBar, QToolBar QLabel { color: white; background-color: black; border: 1px solid black; }");
+        self.setStyleSheet(self.get('css'));
 
         # status bar
         self._label = QtGui.QLabel()
-        self._label.setFont( QtGui.QFont( self.get('fontFamily'), int(self.get('fontSize')) ) )
+        #self._label.setFont( QtGui.QFont( self.get('fontFamily'), int(self.get('fontSize')) ) )
         self._label.setAlignment(QtCore.Qt.AlignCenter)
 
         statusBar = QtGui.QStatusBar()
         statusBar.addWidget(self._label, 1)
+        statusBar.setSizeGripEnabled(False)
+
+        self._searchBox = QtGui.QLineEdit()
+
+        openAction = QtGui.QAction(QtGui.QIcon(Browser._openIcon), 'Open...', self)
+        openAction.setShortcut('Ctrl+O')
+        openAction.triggered.connect(self.openDirectories)
+
+        fullScreenAction = QtGui.QAction(QtGui.QIcon(Browser._fullScreenIcon), 'Toggle Fullscreen', self)
+        fullScreenAction.setShortcut('Ctrl+F')
+        fullScreenAction.triggered.connect(self.toggleFullScreen)
 
         toolBar = self.addToolBar('Video Title')
-        toolBar.addWidget(statusBar)
         toolBar.setMovable(False)
         toolBar.setFloatable(False)
+        toolBar.addAction(openAction)
+        toolBar.addAction(fullScreenAction)
+        toolBar.addWidget(statusBar)
+        #toolBar.addWidget(self._searchBox)
 
         palette = toolBar.palette()
         palette.setColor(QtGui.QPalette.Background, QtCore.Qt.black);
@@ -454,31 +471,21 @@ class Browser(QtGui.QMainWindow):
 
         self._tileflowCreated = False
 
-        # open dialog
-        if len(self.getPaths()) == 0:
-            msgBox = QtGui.QMessageBox(self)
-            msgBox.setText('It looks like you\'re running Video Coverflow for the first time!\n\nPress Ok to browse for one or more directories containing videos.')
-            msgBox.setStandardButtons(QtGui.QMessageBox.Ok)
-            msgBox.setIcon(QtGui.QMessageBox.Information)
-            ret = msgBox.exec_()
-            self.openDirectories(True)
-        else:
-            self.populate()
+        # populate
+        self.populate()
 
         self._tileflow = Browser.TileflowWidget(self, self)
         self._tileflow.setFocus()
         self._tileflowCreated = True
         self.setCentralWidget(self._tileflow)
 
-        QtGui.QShortcut(QtGui.QKeySequence(self.tr('Ctrl+F', 'Fullscreen')), self, self.toggleFullScreen)
-        QtGui.QShortcut(QtGui.QKeySequence(self.tr('Ctrl+O', 'Open')), self, self.openDirectories)
+        QtGui.QShortcut(QtGui.QKeySequence(self.tr('Esc', 'Exit Fullscreen')), self, self.escape)
 
         self.updateFullScreen()
 
-    def setMessage(self, message):
-        self._label.setText(message)
+    def setMessage(self, message): self._label.setText(message)
 
-    def openDirectories(self, killOnNoDirectories=False):
+    def openDirectories(self):
 
         #dialog = QtGui.QFileDialog()
         #dialog.setOption(QtGui.QFileDialog.ShowDirsOnly, True)
@@ -497,20 +504,16 @@ class Browser(QtGui.QMainWindow):
                 t.setSelectionMode(QtGui.QAbstractItemView.MultiSelection)
             if w.exec_():
                 self.set( 'paths', ''.join(w.selectedFiles()) )
-            elif killOnNoDirectories:
-                sys.exit(1)
 
             self.populate()
 
             if len(self) == 0:
                 msgBox = QtGui.QMessageBox(self)
-                msgBox.setText('No videos were found in the selected location(s). Would you like to select another location(s)?')
+                msgBox.setText('No videos were found in the selected location(s). Would you like to select another?')
                 msgBox.setStandardButtons(QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
                 msgBox.setIcon(QtGui.QMessageBox.Question)
                 ret = msgBox.exec_()
                 if ret == QtGui.QMessageBox.No:
-                    if killOnNoDirectories:
-                        sys.exit(1)
                     break
             else:
                 break
@@ -520,6 +523,11 @@ class Browser(QtGui.QMainWindow):
     def updateFullScreen(self):
         if int(self.get('fullscreen')): self.showFullScreen()
         else: self.showNormal()
+
+    def escape(self):
+        self._tileflow.setFocus()
+        self.set('fullscreen', 0)
+        self.showNormal()
 
     def toggleFullScreen(self):
         self.set( 'fullscreen', int(not int( self.get('fullscreen') )) )
@@ -576,7 +584,7 @@ class Browser(QtGui.QMainWindow):
         if newName != '': name = newName
 
         # key is of the form MOVIE[_YEAR]
-        key = ''.join([name, '_', year]) if year is not None else name
+        key = (''.join([name, '_', year]) if year is not None else name).lower()
         try:
             self._mediaTrie[key].addFilePaths(filePaths)
         except:
@@ -615,4 +623,11 @@ class Browser(QtGui.QMainWindow):
                                 filePaths.append(os.path.join(root, filename))
                     if len(filePaths) == 0: continue
                     self.addMedia(subpath, filePaths)
+
+        if len(self) == 0:
+            self._searchBox.setPlaceholderText('')
+            self._searchBox.setEnabled(False)
+        else:
+            self._searchBox.setPlaceholderText('Filter by keywords')
+            self._searchBox.setEnabled(True)
 
