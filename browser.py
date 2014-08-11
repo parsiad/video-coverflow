@@ -434,6 +434,8 @@ class Browser(QtGui.QMainWindow):
             msgBox.setIcon(QtGui.QMessageBox.Information)
             ret = msgBox.exec_()
             self.openDirectories(True)
+        else:
+            self.populate()
 
         self._tileflow = Browser.TileflowWidget(self, self)
         self._tileflow.setFocus()
