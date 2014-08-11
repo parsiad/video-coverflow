@@ -27,5 +27,6 @@ TODO
 
 In order of importance:
 
-2. Large movie/show title text for selected item
-3. Search
+1. Title text for selected item
+2. Filter titles
+3. Controller support
