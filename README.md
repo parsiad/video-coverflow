@@ -27,6 +27,5 @@ TODO
 
 In order of importance:
 
-1. Title text for selected item
-2. Filter titles
-3. Controller support
+1. Filter titles
+2. Controller support
