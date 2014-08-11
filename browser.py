@@ -427,6 +427,8 @@ class Browser(QtGui.QMainWindow):
 
         QtGui.QMainWindow.__init__(self, parent)
 
+        self.setWindowTitle('Video Coverflow')
+
         self._label = QtGui.QLabel()
         self._label.setFont( QtGui.QFont("Times", 32) )
         self._label.setAlignment(QtCore.Qt.AlignCenter)
