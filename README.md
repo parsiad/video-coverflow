@@ -25,6 +25,7 @@ To run video-coverflow, you will need:
 TODO
 ----
 
-- Controller support
-- Large movie/show title text for selected item
-- Search
+In order of importance:
+
+2. Large movie/show title text for selected item
+3. Search
