@@ -28,7 +28,7 @@ class Browser(QtGui.QMainWindow):
     _iniFilename = 'config.ini'
     _iniPath = os.path.join(_configPath, _iniFilename)
     _iniSection = 'CUSTOM'
-    _iniDefaults = { 'width': '640', 'height': '320', 'fullscreen': '1', 'scale': '0.7', 'extensions': '.3gp,.asf,.avi,.flv,.m4v,.mkv,.mov,.mpeg,.mpg,.mpe,.mp4,.ogg,.ogv,.ogm,.rmi,.wmv', 'paths': '' }
+    _iniDefaults = { 'width': '640', 'height': '320', 'fullscreen': '1', 'scale': '0.7', 'fontFamily': 'Times', 'fontSize': '28', 'extensions': '.3gp,.asf,.avi,.flv,.m4v,.mkv,.mov,.mpeg,.mpg,.mpe,.mp4,.ogg,.ogv,.ogm,.rmi,.wmv' }
 
     _delimiters = ['.', '-', '_', ':', ',', ';']
     _pattern = re.compile('(\s*\[[^]]*\])*\s*(.*)')
@@ -108,7 +108,7 @@ class Browser(QtGui.QMainWindow):
             return QtCore.QSize(Browser.TileflowWidget._minWidth, Browser.TileflowWidget._minHeight)
 
         def sizeHint(self):
-            return QtCore.QSize(self._browser.getWidth(), self._browser.getHeight())
+            return QtCore.QSize( int(self._browser.get('width')), int(self._browser.get('height')) )
 
         def generateTile(self, ind, texture):
             GL.glNewList(ind, GL.GL_COMPILE)
@@ -191,8 +191,8 @@ class Browser(QtGui.QMainWindow):
             return (offset, mid)
 
         def paintGL(self):
-            scale = self._browser.getScale()
-            ratio = float(self._browser.getWidth()) / self._browser.getHeight()
+            scale = float(self._browser.get('scale'))
+            ratio = float(self._browser.get('width')) / float(self._browser.get('height'))
 
             self.qglClearColor(self._clearColor)
             GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
@@ -264,8 +264,8 @@ class Browser(QtGui.QMainWindow):
                 self._browser.setMessage(display)
 
         def resizeGL(self, width, height):
-            self._browser.setWidth(width)
-            self._browser.setHeight(height)
+            self._browser.set('width', width)
+            self._browser.set('height', height)
             GL.glViewport(0, 0, width, height)
 
         def mousePressEvent(self, event):
@@ -274,7 +274,7 @@ class Browser(QtGui.QMainWindow):
 
         def mouseMoveEvent(self, event):
             dx = event.x() - self._lastPos.x()
-            offset = self._offset - float(dx) * 6 / (self._browser.getWidth() * 0.6)
+            offset = self._offset - float(dx) * 6. / (float(self._browser.get('width')) * 0.6)
             if offset < 0:
                 self._offset = 0
             elif offset > len(self._browser) - 1:
@@ -312,14 +312,14 @@ class Browser(QtGui.QMainWindow):
             else:
                 # TODO: make this fluid
                 if event.delta() < 0:
-                    scale = self._browser.getScale()
+                    scale = float(self._browser.get('scale'))
                     scale = min(2, scale + Browser.TileflowWidget._dscale)
-                    self._browser.setScale(scale)
+                    self._browser.set('scale', scale)
                     self.updateGL()
                 elif event.delta() > 0:
-                    scale = self._browser.getScale()
+                    scale = float(self._browser.get('scale'))
                     scale = max(0.5, scale - Browser.TileflowWidget._dscale)
-                    self._browser.setScale(scale)
+                    self._browser.set('scale', scale)
                     self.updateGL()
 
         def keyPressEvent(self, event):
@@ -427,15 +427,34 @@ class Browser(QtGui.QMainWindow):
 
         QtGui.QMainWindow.__init__(self, parent)
 
+        # window title
         self.setWindowTitle('Video Coverflow')
 
+        # style
+        self.setStyleSheet("QToolBar, QToolBar QLabel { color: white; background-color: black; border: 1px solid black; }");
+
+        # status bar
         self._label = QtGui.QLabel()
-        self._label.setFont( QtGui.QFont("Times", 32) )
+        self._label.setFont( QtGui.QFont( self.get('fontFamily'), int(self.get('fontSize')) ) )
         self._label.setAlignment(QtCore.Qt.AlignCenter)
-        self.statusBar().addWidget(self._label, 1)
+
+        statusBar = QtGui.QStatusBar()
+        statusBar.addWidget(self._label, 1)
+
+        toolBar = self.addToolBar('Video Title')
+        toolBar.addWidget(statusBar)
+        toolBar.setMovable(False)
+        toolBar.setFloatable(False)
+
+        palette = toolBar.palette()
+        palette.setColor(QtGui.QPalette.Background, QtCore.Qt.black);
+        palette.setColor(QtGui.QPalette.Foreground, QtCore.Qt.white);
+        toolBar.setPalette(palette);
+        toolBar.setAutoFillBackground(True);
 
         self._tileflowCreated = False
 
+        # open dialog
         if len(self.getPaths()) == 0:
             msgBox = QtGui.QMessageBox(self)
             msgBox.setText('It looks like you\'re running Video Coverflow for the first time!\n\nPress Ok to browse for one or more directories containing videos.')
@@ -477,7 +496,7 @@ class Browser(QtGui.QMainWindow):
             if t:
                 t.setSelectionMode(QtGui.QAbstractItemView.MultiSelection)
             if w.exec_():
-                self.setPaths( w.selectedFiles() )
+                self.set( 'paths', ''.join(w.selectedFiles()) )
             elif killOnNoDirectories:
                 sys.exit(1)
 
@@ -499,11 +518,11 @@ class Browser(QtGui.QMainWindow):
         if self._tileflowCreated: self._tileflow.clear()
 
     def updateFullScreen(self):
-        if self.getFullScreen(): self.showFullScreen()
+        if int(self.get('fullscreen')): self.showFullScreen()
         else: self.showNormal()
 
     def toggleFullScreen(self):
-        self._config.set( Browser._iniSection, 'fullscreen', str(int( not self.getFullScreen() )) )
+        self.set( 'fullscreen', int(not int( self.get('fullscreen') )) )
         self.updateFullScreen()
 
     def closeEvent(self, event):
@@ -514,34 +533,19 @@ class Browser(QtGui.QMainWindow):
     def __iter__(self): return self._mediaTrie.itervalues()
     def __len__(self): return self._count
 
-    def setScale(self, scale): self._config.set(Browser._iniSection, 'scale', str(scale))
+    def get(self, key):
+        try: return self._config.get(Browser._iniSection, key)
+        except: return Browser._iniDefaults[key]
 
-    def getScale(self):
-        try: return float(self._config.get(Browser._iniSection, 'scale'))
-        except: return float(Browser._iniDefaults['scale'])
-
-    def getWidth(self):
-        try: return int(self._config.get(Browser._iniSection, 'width'))
-        except: return int(Browser._iniDefaults['width'])
-    def getHeight(self):
-        try: return int(self._config.get(Browser._iniSection, 'height'))
-        except: return int(Browser._iniDefaults['height'])
-
-    def setWidth(self, width): self._config.set(Browser._iniSection, 'width', str(width))
-    def setHeight(self, height): self._config.set(Browser._iniSection, 'height', str(height))
-
-    def getFullScreen(self):
-        try: return bool(int(self._config.get(Browser._iniSection, 'fullscreen')))
-        except: return bool(Browser._iniDefaults['fullscreen'])
-
-    def setPaths(self, paths): self._config.set(Browser._iniSection, 'paths', ','.join(paths))
+    def set(self, key, value):
+        self._config.set(Browser._iniSection, key, str(value))
 
     def getPaths(self):
-        try: return [ path for path in self._config.get(Browser._iniSection, 'paths').split(',') if path.strip() != '' ]
+        try: return [ path for path in self.get('paths').split(',') if path.strip() != '' ]
         except: return []
 
     def getExtensions(self):
-        try: return self._config.get(Browser._iniSection, 'extensions').split(',')
+        try: return self.get('extensions').split(',')
         except: return Browser._iniDefaults['extensions'].split(',')
 
     def addMedia(self, name, filePaths):
