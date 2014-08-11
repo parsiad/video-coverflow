@@ -423,44 +423,65 @@ class Browser(QtGui.QMainWindow):
         if not self._config.has_section(Browser._iniSection):
             self._config.add_section(Browser._iniSection)
 
-        self._tileflowCreated = False
-        if len(self.getPaths()) == 0:
-            self.openDirectories()
-
-        # populate
-        self.populate()
-
         QtGui.QMainWindow.__init__(self, parent)
+
+        self._tileflowCreated = False
+
+        if len(self.getPaths()) == 0:
+            msgBox = QtGui.QMessageBox(self)
+            msgBox.setText('It looks like you\'re running Video Coverflow for the first time!\n\nPress Ok to browse for one or more directories containing videos.')
+            msgBox.setStandardButtons(QtGui.QMessageBox.Ok)
+            msgBox.setIcon(QtGui.QMessageBox.Information)
+            ret = msgBox.exec_()
+            self.openDirectories(True)
+
         self._tileflow = Browser.TileflowWidget(self, self)
         self._tileflow.setFocus()
         self._tileflowCreated = True
         self.setCentralWidget(self._tileflow)
 
-        QtGui.QShortcut(QtGui.QKeySequence(self.tr("Ctrl+F", "Fullscreen")), self, self.toggleFullScreen)
-        QtGui.QShortcut(QtGui.QKeySequence(self.tr("Ctrl+O", "Open")), self, self.openDirectories)
+        QtGui.QShortcut(QtGui.QKeySequence(self.tr('Ctrl+F', 'Fullscreen')), self, self.toggleFullScreen)
+        QtGui.QShortcut(QtGui.QKeySequence(self.tr('Ctrl+O', 'Open')), self, self.openDirectories)
 
         self.updateFullScreen()
 
-    def openDirectories(self):
+    def openDirectories(self, killOnNoDirectories=False):
 
         #dialog = QtGui.QFileDialog()
         #dialog.setOption(QtGui.QFileDialog.ShowDirsOnly, True)
         #if dialog.exec_():
         #    self.setPaths( dialog.selectedFiles() )
 
-        w = QtGui.QFileDialog()
-        w.setFileMode(QtGui.QFileDialog.DirectoryOnly)
-        w.setOption(QtGui.QFileDialog.DontUseNativeDialog, True)
-        l = w.findChild(QtGui.QListView, 'listView')
-        if l:
-            l.setSelectionMode(QtGui.QAbstractItemView.MultiSelection)
-        t = w.findChild(QtGui.QTreeView, 'treeView')
-        if t:
-            t.setSelectionMode(QtGui.QAbstractItemView.MultiSelection)
-        if w.exec_():
-            self.setPaths( w.selectedFiles() )
+        while True:
+            w = QtGui.QFileDialog(self)
+            w.setFileMode(QtGui.QFileDialog.DirectoryOnly)
+            w.setOption(QtGui.QFileDialog.DontUseNativeDialog, True)
+            l = w.findChild(QtGui.QListView, 'listView')
+            if l:
+                l.setSelectionMode(QtGui.QAbstractItemView.MultiSelection)
+            t = w.findChild(QtGui.QTreeView, 'treeView')
+            if t:
+                t.setSelectionMode(QtGui.QAbstractItemView.MultiSelection)
+            if w.exec_():
+                self.setPaths( w.selectedFiles() )
+            elif killOnNoDirectories:
+                sys.exit(1)
 
-        self.populate()
+            self.populate()
+
+            if len(self) == 0:
+                msgBox = QtGui.QMessageBox(self)
+                msgBox.setText('No videos were found in the selected location(s). Would you like to select another location(s)?')
+                msgBox.setStandardButtons(QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
+                msgBox.setIcon(QtGui.QMessageBox.Question)
+                ret = msgBox.exec_()
+                if ret == QtGui.QMessageBox.No:
+                    if killOnNoDirectories:
+                        sys.exit(1)
+                    break
+            else:
+                break
+
         if self._tileflowCreated: self._tileflow.clear()
 
     def updateFullScreen(self):
@@ -573,7 +594,6 @@ class Browser(QtGui.QMainWindow):
                             name, extension = os.path.splitext(filename)
                             if extension in extensions:
                                 filePaths.append(os.path.join(root, filename))
-                        if len(filePaths) == 0:
-                            continue
+                    if len(filePaths) == 0: continue
                     self.addMedia(subpath, filePaths)
 
