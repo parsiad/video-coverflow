@@ -76,6 +76,8 @@ class Browser(QtGui.QMainWindow):
 
             self._browser = browser
 
+            self._xvel = 0
+
             self._queue = multiprocessing.Queue()
             self._lists = []
             self._hasCleared = False
@@ -95,7 +97,7 @@ class Browser(QtGui.QMainWindow):
 
             timer = QtCore.QTimer(self)
             timer.timeout.connect(self.focusTile)
-            timer.start(20)
+            timer.start(10)
 
             if self._hasCleared:
                 self.initializeGL()
@@ -226,13 +228,9 @@ class Browser(QtGui.QMainWindow):
 
                 GL.glPopMatrix()
 
-        def focusTile(self):
-            if not self._mouseDown:
-                target = math.floor(self._offset + 0.5)
-                if not abs(target - self._offset) <= 0.01:
-                    self._offset += (target - self._offset) / 3
-                    self.updateGL()
+        def moving(self): return self._mouseDown
 
+        def focusTile(self):
             while not self._queue.empty():
                 position = self._queue.get()
                 try:
@@ -247,11 +245,21 @@ class Browser(QtGui.QMainWindow):
                 except:
                     pass
 
-                #if len(self._browser) > 0:
-                #    offset, mid = self.offsetMid()
-                #    media = self._indexMapping[mid][0]
-                #    display = os.path.basename( ''.join([media.getName(), ' (', media.getYear(), ')']) )
-                #    self._browser.setWindowTitle(self.tr( '%s - %s' % (Browser._title, display) ))
+            if abs(self._xvel) > 1e-2:
+                self._xvel *= 0.75
+                self._offset += self._xvel
+                self.updateGL()
+            elif not self.moving():
+                target = math.floor(self._offset + 0.5)
+                if not abs(target - self._offset) <= 0.01:
+                    self._offset += (target - self._offset) / 3
+                    self.updateGL()
+
+            #if len(self._browser) > 0:
+            #    offset, mid = self.offsetMid()
+            #    media = self._indexMapping[mid][0]
+            #    display = os.path.basename( ''.join([media.getName(), ' (', media.getYear(), ')']) )
+            #    self._browser.setWindowTitle(self.tr( '%s - %s' % (Browser._title, display) ))
 
         def resizeGL(self, width, height):
             self._browser.setWidth(width)
@@ -297,7 +305,7 @@ class Browser(QtGui.QMainWindow):
 
         def wheelEvent(self, event):
             if event.orientation() == QtCore.Qt.Horizontal:
-                # TODO
+                self._xvel = float(event.delta()) / 256
                 self.updateGL()
             else:
                 # TODO: make this fluid
@@ -313,10 +321,10 @@ class Browser(QtGui.QMainWindow):
                     self.updateGL()
 
         def keyPressEvent(self, event):
-            if event.key() == QtCore.Qt.Key_Left and not self._mouseDown:
+            if event.key() == QtCore.Qt.Key_Left:
                 self._offset = int( (self._offset - 1) % len(self._browser) )
                 self.updateGL()
-            elif event.key() == QtCore.Qt.Key_Right and not self._mouseDown:
+            elif event.key() == QtCore.Qt.Key_Right:
                 self._offset = int( (self._offset + 1) % len(self._browser) )
                 self.updateGL()
             elif event.key() == QtCore.Qt.Key_Return:
