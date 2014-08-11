@@ -255,11 +255,13 @@ class Browser(QtGui.QMainWindow):
                     self._offset += (target - self._offset) / 3
                     self.updateGL()
 
-            #if len(self._browser) > 0:
-            #    offset, mid = self.offsetMid()
-            #    media = self._indexMapping[mid][0]
-            #    display = os.path.basename( ''.join([media.getName(), ' (', media.getYear(), ')']) )
-            #    self._browser.setWindowTitle(self.tr( '%s - %s' % (Browser._title, display) ))
+            if len(self._browser) > 0:
+                offset, mid = self.offsetMid()
+                media = self._indexMapping[mid][0]
+                name = media.getName()
+                year = media.getYear()
+                display = ''.join([media.getName(), ' (', media.getYear(), ')']) if year != '' else name
+                self._browser.setMessage(display)
 
         def resizeGL(self, width, height):
             self._browser.setWidth(width)
@@ -425,6 +427,11 @@ class Browser(QtGui.QMainWindow):
 
         QtGui.QMainWindow.__init__(self, parent)
 
+        self._label = QtGui.QLabel()
+        self._label.setFont( QtGui.QFont("Times", 32) )
+        self._label.setAlignment(QtCore.Qt.AlignCenter)
+        self.statusBar().addWidget(self._label, 1)
+
         self._tileflowCreated = False
 
         if len(self.getPaths()) == 0:
@@ -446,6 +453,9 @@ class Browser(QtGui.QMainWindow):
         QtGui.QShortcut(QtGui.QKeySequence(self.tr('Ctrl+O', 'Open')), self, self.openDirectories)
 
         self.updateFullScreen()
+
+    def setMessage(self, message):
+        self._label.setText(message)
 
     def openDirectories(self, killOnNoDirectories=False):
 
@@ -568,6 +578,7 @@ class Browser(QtGui.QMainWindow):
             self._count += 1
 
     def populate(self):
+        self.setMessage('')
         self._count = 0
         self._mediaTrie = Trie()
 
