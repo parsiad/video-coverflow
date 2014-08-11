@@ -4,6 +4,7 @@ import fnmatch
 import json
 import math
 import re
+import multiprocessing
 import os
 import subprocess
 import sys
@@ -75,6 +76,7 @@ class Browser(QtGui.QMainWindow):
 
             self._browser = browser
 
+            self._queue = multiprocessing.Queue()
             self._lists = []
             self._hasCleared = False
             self.clear()
@@ -172,7 +174,8 @@ class Browser(QtGui.QMainWindow):
                     ind += 1
 
             # spawn thread
-            t = Thread(target=self.downloadCoverDaemon)
+            l = self._indexMapping[:]
+            t = Thread( target=self.downloadCoverDaemon, args=(l,) )
             t.daemon = True
             t.start()
 
@@ -230,12 +233,25 @@ class Browser(QtGui.QMainWindow):
                     self._offset += (target - self._offset) / 3
                     self.updateGL()
 
-                if len(self._browser) > 0:
-                    offset, mid = self.offsetMid()
-                    media = self._indexMapping[mid][0]
-                    display = os.path.basename( ''.join([media.getName(), ' (', media.getYear(), ')']) )
-                    self._browser.setWindowTitle(self.tr( '%s - %s' % (Browser._title, display) ))
-                # TODO: not sure why, but this does not work after a dialog is spawned
+            while not self._queue.empty():
+                position = self._queue.get()
+                try:
+                    media, ind = self._indexMapping[position]
+                    if media.getCover() is not None and ind == self._missing_tile:
+                        newInd = GL.glGenLists(1)
+                        self._lists.append( (newInd, 1) )
+                        texture = self.bindTexture(QtGui.QPixmap( media.getCover() ))
+                        self.generateTile(newInd, texture)
+                        self._indexMapping[position] = (media, newInd)
+                        self.updateGL()
+                except:
+                    pass
+
+                #if len(self._browser) > 0:
+                #    offset, mid = self.offsetMid()
+                #    media = self._indexMapping[mid][0]
+                #    display = os.path.basename( ''.join([media.getName(), ' (', media.getYear(), ')']) )
+                #    self._browser.setWindowTitle(self.tr( '%s - %s' % (Browser._title, display) ))
 
         def resizeGL(self, width, height):
             self._browser.setWidth(width)
@@ -259,9 +275,7 @@ class Browser(QtGui.QMainWindow):
 
             self._lastPos = QtCore.QPoint(event.pos())
 
-        def mouseReleaseEvent(self, event):
-            #QtGui.QSound.play('')
-            self._mouseDown = False
+        def mouseReleaseEvent(self, event): self._mouseDown = False
 
         def openCurrent(self):
             offset, mid = self.offsetMid()
@@ -282,16 +296,21 @@ class Browser(QtGui.QMainWindow):
         def mouseDoubleClickEvent(self, event): self.openCurrent()
 
         def wheelEvent(self, event):
-            if event.delta() < 0:
-                scale = self._browser.getScale()
-                scale = min(2, scale + Browser.TileflowWidget._dscale)
-                self._browser.setScale(scale)
+            if event.orientation() == QtCore.Qt.Horizontal:
+                # TODO
                 self.updateGL()
-            elif event.delta() > 0:
-                scale = self._browser.getScale()
-                scale = max(0.5, scale - Browser.TileflowWidget._dscale)
-                self._browser.setScale(scale)
-                self.updateGL()
+            else:
+                # TODO: make this fluid
+                if event.delta() < 0:
+                    scale = self._browser.getScale()
+                    scale = min(2, scale + Browser.TileflowWidget._dscale)
+                    self._browser.setScale(scale)
+                    self.updateGL()
+                elif event.delta() > 0:
+                    scale = self._browser.getScale()
+                    scale = max(0.5, scale - Browser.TileflowWidget._dscale)
+                    self._browser.setScale(scale)
+                    self.updateGL()
 
         def keyPressEvent(self, event):
             if event.key() == QtCore.Qt.Key_Left and not self._mouseDown:
@@ -312,14 +331,6 @@ class Browser(QtGui.QMainWindow):
             elif (f < -Browser.TileflowWidget._flankSpread):
                 f = -Browser.TileflowWidget._flankSpread
 
-            media, ind = self._indexMapping[position]
-            if media.getCover() is not None and ind == self._missing_tile:
-                newInd = GL.glGenLists(1)
-                self._lists.append( (newInd, 1) )
-                texture = self.bindTexture(QtGui.QPixmap( media.getCover() ))
-                self.generateTile(newInd, texture)
-                self._indexMapping[position] = (media, newInd)
-
             matrix[3] = -1 * Browser.TileflowWidget._direction * f
             matrix[0] = 1 - abs(f)
             scale = 0.45 * matrix[0]
@@ -331,18 +342,20 @@ class Browser(QtGui.QMainWindow):
             GL.glCallList(self._indexMapping[position][1])
             GL.glPopMatrix()
 
-        def downloadCoverDaemon(self):
+        def downloadCoverDaemon(self, indexMapping):
             k = 0
-            for media, ind in self._indexMapping:
+            for media, ind in indexMapping:
                 if media.getCover() is None:
                     sys.stderr.write( 'info: attempting to download cover for `%s`...' % (media.getName()) )
                     try:
-                        media = self._indexMapping[k][0]
+                        media = indexMapping[k][0]
 
                         metadata = media.getMetadata()
                         cover = metadata.downloadCover()
                         with open(media.getCoverPath(), 'wb') as f:
                             f.write(cover)
+
+                        self._queue.put(k)
 
                         sys.stderr.write(' done\r\n')
                         time.sleep(Browser._sleep)
@@ -422,12 +435,10 @@ class Browser(QtGui.QMainWindow):
 
     def openDirectories(self):
 
-        '''
-        dialog = QtGui.QFileDialog()
-        dialog.setOption(QtGui.QFileDialog.ShowDirsOnly, True)
-        if dialog.exec_():
-            self.setPaths( dialog.selectedFiles() )
-        '''
+        #dialog = QtGui.QFileDialog()
+        #dialog.setOption(QtGui.QFileDialog.ShowDirsOnly, True)
+        #if dialog.exec_():
+        #    self.setPaths( dialog.selectedFiles() )
 
         w = QtGui.QFileDialog()
         w.setFileMode(QtGui.QFileDialog.DirectoryOnly)
