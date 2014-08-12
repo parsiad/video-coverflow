@@ -65,6 +65,7 @@ class Browser(QtGui.QMainWindow):
     _fullScreenIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'fullscreen.png' )
     _clearIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'clear.png' )
     _indexIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'index.png' )
+    _playIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'play.png' )
 
     class TileflowWidget(QtOpenGL.QGLWidget):
 
@@ -301,7 +302,9 @@ class Browser(QtGui.QMainWindow):
 
         def mouseReleaseEvent(self, event): self._mouseDown = False
 
-        def openCurrent(self):
+        def play(self):
+            if len(self._browser) == 0: return
+
             offset, mid = self.offsetMid()
             filePaths = self._indexMapping[mid][0].getFilePaths()
             path = None
@@ -317,7 +320,7 @@ class Browser(QtGui.QMainWindow):
             elif os.name == 'posix':
                 subprocess.call(('xdg-open', path))
 
-        def mouseDoubleClickEvent(self, event): self.openCurrent()
+        def mouseDoubleClickEvent(self, event): self.play()
 
         def wheelEvent(self, event):
             if event.orientation() == QtCore.Qt.Horizontal:
@@ -344,7 +347,7 @@ class Browser(QtGui.QMainWindow):
                 self._offset = int( (self._offset + 1) % len(self._browser) )
                 self.updateGL()
             elif event.key() == QtCore.Qt.Key_Return:
-                self.openCurrent()
+                self.play()
 
         def drawTile(self, position, offset):
             matrix = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]
@@ -371,10 +374,10 @@ class Browser(QtGui.QMainWindow):
             i = ord(c)
             for media in self._browser:
                 if ord(media.getName()[0].upper()) >= i:
-                    self._offset = k
-                    self.updateGL()
-                    return
+                    break
                 k += 1
+            self._offset = k
+            self.updateGL()
 
         def downloadCoverDaemon(self, indexMapping):
             # TODO: kill this thread explicitly
@@ -501,13 +504,16 @@ class Browser(QtGui.QMainWindow):
         index.setMenu(indexMenu)
         index.setPopupMode(QtGui.QToolButton.InstantPopup)
 
+        playAction = QtGui.QAction(QtGui.QIcon(Browser._playIcon), 'Play', self)
+
         toolBar = self.addToolBar('Toolbar')
         self.setContextMenuPolicy(QtCore.Qt.NoContextMenu) # toolbar unhideable
         toolBar.setMovable(False)
         toolBar.setFloatable(False)
         toolBar.addAction(openAction)
+        toolBar.addWidget(index)
         toolBar.addAction(fullScreenAction)
-        toolBar.addWidget(index);
+        toolBar.addAction(playAction)
         toolBar.addWidget(statusBar)
         toolBar.addWidget(self._searchBox)
 
@@ -529,6 +535,8 @@ class Browser(QtGui.QMainWindow):
         self._tileflow.setFocus()
         self._tileflowCreated = True
         self.setCentralWidget(self._tileflow)
+
+        playAction.triggered.connect(self._tileflow.play)
 
         for c in ['0', 'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z']:
             indexC = Browser.IndexAction(c, self._tileflow, self);
