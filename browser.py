@@ -526,6 +526,7 @@ class Browser(QtGui.QMainWindow):
             if w.exec_():
                 self.set( 'paths', ''.join(w.selectedFiles()) )
 
+            self._previousSearch = None
             self.populate()
 
             if len(self) == 0:
@@ -537,8 +538,6 @@ class Browser(QtGui.QMainWindow):
                 if ret == QtGui.QMessageBox.No:
                     break
             else:
-                self._previousSearch = None
-
                 # daemon
                 self._tileflow.spawnDownloadCoverDaemon()
 
