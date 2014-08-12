@@ -102,7 +102,7 @@ class Browser(QtGui.QMainWindow):
 
             timer = QtCore.QTimer(self)
             timer.timeout.connect(self.focusTile)
-            timer.start(10)
+            timer.start(20)
 
             if self._hasCleared:
                 self.initializeGL()
@@ -180,6 +180,13 @@ class Browser(QtGui.QMainWindow):
                     self._indexMapping.append((media, ind))
                     ind += 1
 
+        def spawnDownloadCoverDaemon(self):
+            timer = QtCore.QTimer(self)
+            timer.setSingleShot(True)
+            timer.timeout.connect(self.spawn)
+            timer.start(250)
+
+        def spawn(self):
             # spawn thread
             l = self._indexMapping[:]
             t = Thread( target=self.downloadCoverDaemon, args=(l,) )
@@ -360,8 +367,8 @@ class Browser(QtGui.QMainWindow):
 
         def downloadCoverDaemon(self, indexMapping):
             # TODO: kill this thread explicitly
-
             k = 0
+
             for media, ind in indexMapping:
                 if media.getCover() is None:
                     sys.stderr.write( 'info: attempting to download cover for `%s`...' % (media.getName()) )
@@ -471,6 +478,7 @@ class Browser(QtGui.QMainWindow):
         toolBar.addWidget(statusBar)
         toolBar.addWidget(self._searchBox)
 
+        self._previousSearch = None
         self._searchBox.editingFinished.connect(self.search)
 
         palette = toolBar.palette()
@@ -488,6 +496,9 @@ class Browser(QtGui.QMainWindow):
         self._tileflow.setFocus()
         self._tileflowCreated = True
         self.setCentralWidget(self._tileflow)
+
+        # daemon
+        self._tileflow.spawnDownloadCoverDaemon()
 
         QtGui.QShortcut(QtGui.QKeySequence(self.tr('Esc', 'Exit Fullscreen')), self, self.escape)
 
@@ -526,6 +537,11 @@ class Browser(QtGui.QMainWindow):
                 if ret == QtGui.QMessageBox.No:
                     break
             else:
+                self._previousSearch = None
+
+                # daemon
+                self._tileflow.spawnDownloadCoverDaemon()
+
                 break
 
         if self._tileflowCreated: self._tileflow.clear()
@@ -609,17 +625,20 @@ class Browser(QtGui.QMainWindow):
         self.search()
 
     def search(self):
-        self.buildTrie()
-        self._tileflow.clear()
+        if self.buildTrie(): self._tileflow.clear()
 
     def buildTrie(self):
+        currentSearch = self._searchBox.text()
+        if self._previousSearch == currentSearch: return False
+        self._previousSearch = currentSearch
+
         self.setMessage('')
 
-        tokens = [ token for token in self._searchBox.text().split(' ') if token != '' ]
+        tokens = [ token for token in currentSearch.split(' ') if token != '' ]
         if len(tokens) == 0:
             self._count = self._totalCount
             self._currentTrie = self._mediaTrie
-            return
+            return True
 
         self._count = 0
         self._currentTrie = Trie()
@@ -629,6 +648,8 @@ class Browser(QtGui.QMainWindow):
                 if p.search(media.getName()):
                     self._currentTrie[media.getKey()] = media
                     self._count += 1
+
+        return True
 
     def populate(self):
         self._searchBox.setText('')
