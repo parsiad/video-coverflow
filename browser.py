@@ -64,6 +64,7 @@ class Browser(QtGui.QMainWindow):
     _openIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'open.png' )
     _fullScreenIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'fullscreen.png' )
     _clearIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'clear.png' )
+    _indexIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'index.png' )
 
     class TileflowWidget(QtOpenGL.QGLWidget):
 
@@ -365,6 +366,16 @@ class Browser(QtGui.QMainWindow):
             GL.glCallList(self._indexMapping[position][1])
             GL.glPopMatrix()
 
+        def goToCharacter(self, c):
+            k = 0
+            i = ord(c)
+            for media in self._browser:
+                if ord(media.getName()[0].upper()) >= i:
+                    self._offset = k
+                    self.updateGL()
+                    return
+                k += 1
+
         def downloadCoverDaemon(self, indexMapping):
             # TODO: kill this thread explicitly
             k = 0
@@ -431,6 +442,19 @@ class Browser(QtGui.QMainWindow):
 
         def getMetadata(self): return Browser.Metadata(self._name, self._year)
 
+    class IndexAction(QtGui.QAction):
+
+        def __init__(self, c, tileflow, parent):
+            QtGui.QAction.__init__(self, c, parent)
+
+            self._tileflow = tileflow
+            self._c = c
+
+            self.triggered.connect(self.go)
+
+        def go(self):
+            self._tileflow.goToCharacter(self._c)
+
     def __init__(self, parent=None):
         # make config directory
         if not os.path.isdir(Browser._configPath):
@@ -470,13 +494,11 @@ class Browser(QtGui.QMainWindow):
         fullScreenAction.setShortcut('Ctrl+F')
         fullScreenAction.triggered.connect(self.toggleFullScreen)
 
-        #menu = QtGui.QMenu()
-        #testAction = QtGui.QAction("test menu item", self);
-        #menu.addAction(testAction);
-
-        #catalog = QtGui.QToolButton()
-        #catalog.setMenu(catalogMenu)
-        #catalog.setPopupMode(QtGui.QToolButton.InstantPopup)
+        indexMenu = QtGui.QMenu()
+        index = QtGui.QToolButton()
+        index.setIcon(QtGui.QIcon(Browser._indexIcon))
+        index.setMenu(indexMenu)
+        index.setPopupMode(QtGui.QToolButton.InstantPopup)
 
         toolBar = self.addToolBar('Toolbar')
         self.setContextMenuPolicy(QtCore.Qt.NoContextMenu) # toolbar unhideable
@@ -484,7 +506,7 @@ class Browser(QtGui.QMainWindow):
         toolBar.setFloatable(False)
         toolBar.addAction(openAction)
         toolBar.addAction(fullScreenAction)
-        #toolBar.addWidget(catalog);
+        toolBar.addWidget(index);
         toolBar.addWidget(statusBar)
         toolBar.addWidget(self._searchBox)
 
@@ -506,6 +528,10 @@ class Browser(QtGui.QMainWindow):
         self._tileflow.setFocus()
         self._tileflowCreated = True
         self.setCentralWidget(self._tileflow)
+
+        for c in ['0', 'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z']:
+            indexC = Browser.IndexAction(c, self._tileflow, self);
+            indexMenu.addAction(indexC);
 
         # daemon
         self._tileflow.spawnDownloadCoverDaemon()
