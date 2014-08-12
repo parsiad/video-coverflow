@@ -29,5 +29,4 @@ TODO
 
 In order of importance:
 
-1. Jump to a spot in the coverflow.
-2. Controller support
+1. Controller support
