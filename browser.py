@@ -466,15 +466,25 @@ class Browser(QtGui.QMainWindow):
         openAction.setShortcut('Ctrl+O')
         openAction.triggered.connect(self.openDirectories)
 
-        fullScreenAction = QtGui.QAction(QtGui.QIcon(Browser._fullScreenIcon), 'Toggle fullscreen', self)
+        fullScreenAction = QtGui.QAction(QtGui.QIcon(Browser._fullScreenIcon), 'Toggle Fullscreen', self)
         fullScreenAction.setShortcut('Ctrl+F')
         fullScreenAction.triggered.connect(self.toggleFullScreen)
 
-        toolBar = self.addToolBar('Video Title')
+        #menu = QtGui.QMenu()
+        #testAction = QtGui.QAction("test menu item", self);
+        #menu.addAction(testAction);
+
+        #catalog = QtGui.QToolButton()
+        #catalog.setMenu(catalogMenu)
+        #catalog.setPopupMode(QtGui.QToolButton.InstantPopup)
+
+        toolBar = self.addToolBar('Toolbar')
+        self.setContextMenuPolicy(QtCore.Qt.NoContextMenu) # toolbar unhideable
         toolBar.setMovable(False)
         toolBar.setFloatable(False)
         toolBar.addAction(openAction)
         toolBar.addAction(fullScreenAction)
+        #toolBar.addWidget(catalog);
         toolBar.addWidget(statusBar)
         toolBar.addWidget(self._searchBox)
 
