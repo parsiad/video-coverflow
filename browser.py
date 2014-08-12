@@ -359,6 +359,8 @@ class Browser(QtGui.QMainWindow):
             GL.glPopMatrix()
 
         def downloadCoverDaemon(self, indexMapping):
+            # TODO: kill this thread explicitly
+
             k = 0
             for media, ind in indexMapping:
                 if media.getCover() is None:
@@ -611,6 +613,8 @@ class Browser(QtGui.QMainWindow):
         self._tileflow.clear()
 
     def buildTrie(self):
+        self.setMessage('')
+
         tokens = [ token for token in self._searchBox.text().split(' ') if token != '' ]
         if len(tokens) == 0:
             self._count = self._totalCount
@@ -627,8 +631,6 @@ class Browser(QtGui.QMainWindow):
                     self._count += 1
 
     def populate(self):
-        self.setMessage('')
-
         self._searchBox.setText('')
 
         self._totalCount = 0
