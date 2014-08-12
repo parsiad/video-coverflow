@@ -1,3 +1,8 @@
+import OpenGL.arrays.ctypesarrays
+import OpenGL.arrays.numpymodule
+import OpenGL.arrays.lists
+import OpenGL.arrays.numbers
+
 import ConfigParser
 import ctypes
 import fnmatch
@@ -18,7 +23,7 @@ from PySide import QtCore, QtGui, QtOpenGL
 from OpenGL import GLU, GL
 
 from trie import Node, Trie
-from buttonlineedit import ButtonLineEdit
+from button_line_edit import ButtonLineEdit
 
 class Browser(QtGui.QMainWindow):
 
@@ -60,12 +65,15 @@ class Browser(QtGui.QMainWindow):
 
     _sleep = 1
 
-    _defaultCoverPath = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'film.png' )
-    _openIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'open.png' )
-    _fullScreenIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'fullscreen.png' )
-    _clearIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'clear.png' )
-    _indexIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'index.png' )
-    _playIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'play.png' )
+    _tmp = os.path.abspath(os.path.dirname(__file__))
+    _root = _tmp[:-12] if _tmp[-12:] == '/library.zip' else _tmp # for Darwin build
+
+    _defaultCoverPath = os.path.join( _root, 'film.png' )
+    _openIcon = os.path.join( _root, 'open.png' )
+    _fullScreenIcon = os.path.join( _root, 'fullscreen.png' )
+    _clearIcon = os.path.join( _root, 'clear.png' )
+    _indexIcon = os.path.join( _root, 'index.png' )
+    _playIcon = os.path.join( _root, 'play.png' )
 
     class TileflowWidget(QtOpenGL.QGLWidget):
 
