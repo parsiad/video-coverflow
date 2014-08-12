@@ -462,7 +462,8 @@ class Browser(QtGui.QMainWindow):
 
         # load ini file
         self._config = ConfigParser.SafeConfigParser(Browser._iniDefaults)
-        self._config.read(Browser._iniPath)
+        try: self._config.read(Browser._iniPath)
+        except: pass
         if not self._config.has_section(Browser._iniSection):
             self._config.add_section(Browser._iniSection)
 
