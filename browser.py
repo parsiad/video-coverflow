@@ -11,12 +11,14 @@ import sys
 import time
 from threading import Thread
 
-from trie import Node, Trie
 from urllib2 import urlopen
 from xml.etree import ElementTree
 
 from PySide import QtCore, QtGui, QtOpenGL
 from OpenGL import GLU, GL
+
+from trie import Node, Trie
+from buttonlineedit import ButtonLineEdit
 
 class Browser(QtGui.QMainWindow):
 
@@ -61,6 +63,7 @@ class Browser(QtGui.QMainWindow):
     _defaultCoverPath = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'film.png' )
     _openIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'open.png' )
     _fullScreenIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'fullscreen.png' )
+    _clearIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'clear.png' )
 
     class TileflowWidget(QtOpenGL.QGLWidget):
 
@@ -393,16 +396,18 @@ class Browser(QtGui.QMainWindow):
 
     class Media:
 
-        def __init__(self, name, year, filePaths):
+        def __init__(self, key, name, year, filePaths):
+            self._key = key
             self._name = name
             self._year = year if year is not None else ''
             self._filePaths = filePaths
 
         def addFilePaths(self, filePaths): self._filePaths.extend(filePaths)
 
-        def getFilePaths(self): return self._filePaths[:]
+        def getKey(self): return self._key
         def getName(self): return self._name
         def getYear(self): return self._year
+        def getFilePaths(self): return self._filePaths[:]
 
         def getCoverPath(self):
             identifier = ''.join([self._name, '_', self._year])
@@ -445,13 +450,14 @@ class Browser(QtGui.QMainWindow):
         statusBar.addWidget(self._label, 1)
         statusBar.setSizeGripEnabled(False)
 
-        self._searchBox = QtGui.QLineEdit()
+        self._searchBox = ButtonLineEdit(Browser._clearIcon)
+        self._searchBox.button.clicked.connect(self.clearQuery)
 
         openAction = QtGui.QAction(QtGui.QIcon(Browser._openIcon), 'Open...', self)
         openAction.setShortcut('Ctrl+O')
         openAction.triggered.connect(self.openDirectories)
 
-        fullScreenAction = QtGui.QAction(QtGui.QIcon(Browser._fullScreenIcon), 'Toggle Fullscreen', self)
+        fullScreenAction = QtGui.QAction(QtGui.QIcon(Browser._fullScreenIcon), 'Toggle fullscreen', self)
         fullScreenAction.setShortcut('Ctrl+F')
         fullScreenAction.triggered.connect(self.toggleFullScreen)
 
@@ -461,7 +467,9 @@ class Browser(QtGui.QMainWindow):
         toolBar.addAction(openAction)
         toolBar.addAction(fullScreenAction)
         toolBar.addWidget(statusBar)
-        #toolBar.addWidget(self._searchBox)
+        toolBar.addWidget(self._searchBox)
+
+        self._searchBox.editingFinished.connect(self.search)
 
         palette = toolBar.palette()
         palette.setColor(QtGui.QPalette.Background, QtCore.Qt.black);
@@ -538,7 +546,7 @@ class Browser(QtGui.QMainWindow):
         with open(self._iniPath, 'wb') as f:
             self._config.write(f)
 
-    def __iter__(self): return self._mediaTrie.itervalues()
+    def __iter__(self): return self._currentTrie.itervalues()
     def __len__(self): return self._count
 
     def get(self, key):
@@ -580,20 +588,50 @@ class Browser(QtGui.QMainWindow):
                     break
             if stop: break
             l.append(token)
-        newName = ' '.join(l).strip()
-        if newName != '': name = newName
+        name = ' '.join(l).strip()
+        if name == '': return
 
         # key is of the form MOVIE[_YEAR]
         key = (''.join([name, '_', year]) if year is not None else name).lower()
+        node = None
         try:
-            self._mediaTrie[key].addFilePaths(filePaths)
+            node = self._mediaTrie[key]
+            node.addFilePaths(filePaths)
         except:
-            self._mediaTrie[key] = Browser.Media(name, year, filePaths)
-            self._count += 1
+            node = Browser.Media(key, name, year, filePaths)
+            self._mediaTrie[key] = node
+            self._totalCount += 1
+
+    def clearQuery(self):
+        self._searchBox.setText('')
+        self.search()
+
+    def search(self):
+        self.buildTrie()
+        self._tileflow.clear()
+
+    def buildTrie(self):
+        tokens = [ token for token in self._searchBox.text().split(' ') if token != '' ]
+        if len(tokens) == 0:
+            self._count = self._totalCount
+            self._currentTrie = self._mediaTrie
+            return
+
+        self._count = 0
+        self._currentTrie = Trie()
+        for media in self._mediaTrie.itervalues():
+            for token in tokens:
+                p = re.compile(''.join([token, '(?i)']))
+                if p.search(media.getName()):
+                    self._currentTrie[media.getKey()] = media
+                    self._count += 1
 
     def populate(self):
         self.setMessage('')
-        self._count = 0
+
+        self._searchBox.setText('')
+
+        self._totalCount = 0
         self._mediaTrie = Trie()
 
         extensions = self.getExtensions()
@@ -624,10 +662,14 @@ class Browser(QtGui.QMainWindow):
                     if len(filePaths) == 0: continue
                     self.addMedia(subpath, filePaths)
 
+        self.buildTrie()
+
         if len(self) == 0:
             self._searchBox.setPlaceholderText('')
             self._searchBox.setEnabled(False)
+            self._searchBox.hide()
         else:
             self._searchBox.setPlaceholderText('Filter by keywords')
             self._searchBox.setEnabled(True)
+            self._searchBox.show()
 
