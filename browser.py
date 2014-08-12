@@ -1,8 +1,3 @@
-import OpenGL.arrays.ctypesarrays
-import OpenGL.arrays.numpymodule
-import OpenGL.arrays.lists
-import OpenGL.arrays.numbers
-
 import ConfigParser
 import ctypes
 import fnmatch
