@@ -18,7 +18,7 @@ from PySide import QtCore, QtGui, QtOpenGL
 from OpenGL import GLU, GL
 
 from trie import Node, Trie
-from button_line_edit import ButtonLineEdit
+from buttonlineedit import ButtonLineEdit
 
 class Browser(QtGui.QMainWindow):
 
@@ -60,15 +60,12 @@ class Browser(QtGui.QMainWindow):
 
     _sleep = 1
 
-    _tmp = os.path.abspath(os.path.dirname(__file__))
-    _root = _tmp[:-12] if _tmp[-12:] == '/library.zip' else _tmp # for Darwin build
-
-    _defaultCoverPath = os.path.join( _root, 'film.png' )
-    _openIcon = os.path.join( _root, 'open.png' )
-    _fullScreenIcon = os.path.join( _root, 'fullscreen.png' )
-    _clearIcon = os.path.join( _root, 'clear.png' )
-    _indexIcon = os.path.join( _root, 'index.png' )
-    _playIcon = os.path.join( _root, 'play.png' )
+    _defaultCoverPath = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'film.png' )
+    _openIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'open.png' )
+    _fullScreenIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'fullscreen.png' )
+    _clearIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'clear.png' )
+    _indexIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'index.png' )
+    _playIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'play.png' )
 
     class TileflowWidget(QtOpenGL.QGLWidget):
 
@@ -611,7 +608,12 @@ class Browser(QtGui.QMainWindow):
         with open(self._iniPath, 'wb') as f:
             self._config.write(f)
 
-    def __iter__(self): return self._currentTrie.itervalues()
+    def __iter__(self):
+        if self._collectionIsTrie:
+            return self._collection.itervalues()
+        else:
+            return self._collection.__iter__()
+
     def __len__(self): return self._count
 
     def get(self, key):
@@ -679,22 +681,32 @@ class Browser(QtGui.QMainWindow):
         if self._previousSearch == currentSearch: return False
         self._previousSearch = currentSearch
 
+        self._collectionIsTrie = True
+
         self.setMessage('')
 
         tokens = [ token for token in currentSearch.split(' ') if token != '' ]
         if len(tokens) == 0:
             self._count = self._totalCount
-            self._currentTrie = self._mediaTrie
+            self._collection = self._mediaTrie
             return True
 
-        self._count = 0
-        self._currentTrie = Trie()
+        self._collectionIsTrie = False
+
+        tmp = []
         for media in self._mediaTrie.itervalues():
+            matches = 0
             for token in tokens:
                 p = re.compile(''.join([token, '(?i)']))
                 if p.search(media.getName()):
-                    self._currentTrie[media.getKey()] = media
-                    self._count += 1
+                    matches += 1
+            if matches > 0:
+                tmp.append( (-matches, media) )
+        tmp.sort()
+        self._collection = []
+        for matches, media in tmp:
+            self._collection.append(media)
+        self._count = len(self._collection)
 
         return True
 
