@@ -2,11 +2,13 @@ import ConfigParser
 import ctypes
 import errno
 import fnmatch
+import imghdr
 import json
 import math
 import re
 import multiprocessing
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -75,6 +77,7 @@ class Browser(QtGui.QMainWindow):
     _fullScreenIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'fullscreen.png' )
     _clearIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'clear.png' )
     _indexIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'index.png' )
+    _imageIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'image.png' )
     _playIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'play.png' )
 
     class TileflowWidget(QtOpenGL.QGLWidget):
@@ -96,14 +99,14 @@ class Browser(QtGui.QMainWindow):
             self._xvel = 0
 
             self._queue = multiprocessing.Queue()
-            self._lists = []
+            self._lists = set()
             self._hasCleared = False
             self.clear()
 
         def clear(self):
-            for (ind, size) in self._lists:
-                GL.glDeleteLists(ind, size)
-            self._lists = []
+            for ind in self._lists:
+                GL.glDeleteLists(ind, 1)
+            self._lists.clear()
 
             self._indexMapping = []
 
@@ -162,35 +165,22 @@ class Browser(QtGui.QMainWindow):
             GL.glEndList()
 
         def initializeGL(self):
-            # load images outside of glNewList/glEndList block
-            indexedTextures = []
-            ind = 0
+            # generate lists
+            self._missing_tile = GL.glGenLists(1)
+            self._lists.add(self._missing_tile)
+            defaultTexture = self.bindTexture(QtGui.QPixmap( Browser._defaultCoverPath ))
+            self.generateTile(self._missing_tile, defaultTexture)
+
             for media in self._browser:
                 coverPath = media.getCover()
                 if coverPath is not None:
                     texture = self.bindTexture(QtGui.QPixmap(coverPath))
-                    indexedTextures.append( (ind, texture) )
-                ind += 1
-
-            # generate lists
-            size = len(indexedTextures) + 1
-            ind = self._missing_tile = GL.glGenLists(size)
-            self._lists.append( (ind, size) )
-            defaultTexture = self.bindTexture(QtGui.QPixmap( Browser._defaultCoverPath ))
-            self.generateTile(ind, defaultTexture)
-            ind += 1
-            for k, texture in indexedTextures:
-                self.generateTile(ind, texture)
-                ind += 1
-
-            # map tiles to gl lists
-            ind = self._missing_tile + 1
-            for media in self._browser:
-                if media.getCover() is None:
-                    self._indexMapping.append((media, self._missing_tile))
-                else:
+                    ind = GL.glGenLists(1)
+                    self.generateTile(ind, texture)
+                    self._lists.add(ind)
                     self._indexMapping.append((media, ind))
-                    ind += 1
+                else:
+                    self._indexMapping.append((media, self._missing_tile))
 
         def spawnDownloadCoverDaemon(self):
             timer = QtCore.QTimer(self)
@@ -261,7 +251,7 @@ class Browser(QtGui.QMainWindow):
                     media, ind = self._indexMapping[position]
                     if media.getCover() is not None and ind == self._missing_tile:
                         newInd = GL.glGenLists(1)
-                        self._lists.append( (newInd, 1) )
+                        self._lists.add(newInd)
                         texture = self.bindTexture(QtGui.QPixmap( media.getCover() ))
                         self.generateTile(newInd, texture)
                         self._indexMapping[position] = (media, newInd)
@@ -329,6 +319,32 @@ class Browser(QtGui.QMainWindow):
                 os.startfile(path)
             elif os.name == 'posix':
                 subprocess.call(('xdg-open', path))
+
+        def changeCover(self):
+            dialog = QtGui.QFileDialog()
+            if dialog.exec_():
+                coverPath = dialog.selectedFiles()[0]
+
+                offset, mid = self.offsetMid()
+
+                media, oldInd = self._indexMapping[mid]
+
+                # copy image
+                shutil.copyfile(coverPath, media.getCoverPath())
+
+                # remove old image
+                if oldInd != self._missing_tile:
+                    self._lists.remove(oldInd)
+                    GL.glDeleteLists(oldInd, 1)
+
+                # load new image
+                texture = self.bindTexture(QtGui.QPixmap( media.getCoverPath() ))
+                ind = GL.glGenLists(1)
+                self.generateTile(ind, texture)
+                self._lists.add(ind)
+                self._indexMapping[mid] = (media, ind)
+
+                self.updateGL()
 
         def mouseDoubleClickEvent(self, event): self.play()
 
@@ -521,7 +537,11 @@ class Browser(QtGui.QMainWindow):
         index.setMenu(indexMenu)
         index.setPopupMode(QtGui.QToolButton.InstantPopup)
 
-        playAction = QtGui.QAction(QtGui.QIcon(Browser._playIcon), 'Play', self)
+        self._coverAction = QtGui.QAction(QtGui.QIcon(Browser._imageIcon), 'Change Cover', self)
+        self._coverAction.setEnabled(False)
+
+        self._playAction = QtGui.QAction(QtGui.QIcon(Browser._playIcon), 'Play', self)
+        self._playAction.setEnabled(False)
 
         toolBar = self.addToolBar('Toolbar')
         self.setContextMenuPolicy(QtCore.Qt.NoContextMenu) # toolbar unhideable
@@ -530,7 +550,8 @@ class Browser(QtGui.QMainWindow):
         toolBar.addAction(openAction)
         toolBar.addWidget(index)
         toolBar.addAction(fullScreenAction)
-        toolBar.addAction(playAction)
+        toolBar.addAction(self._coverAction)
+        toolBar.addAction(self._playAction)
         toolBar.addWidget(statusBar)
         toolBar.addWidget(self._searchBox)
 
@@ -563,7 +584,8 @@ class Browser(QtGui.QMainWindow):
         #self._tileflowCreated = True
         self.setCentralWidget(self._tileflow)
 
-        playAction.triggered.connect(self._tileflow.play)
+        self._playAction.triggered.connect(self._tileflow.play)
+        self._coverAction.triggered.connect(self._tileflow.changeCover)
 
         for c in ['0', 'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z']:
             indexC = Browser.IndexAction(c, self._tileflow, self);
@@ -579,11 +601,6 @@ class Browser(QtGui.QMainWindow):
     def setMessage(self, message): self._label.setText(message)
 
     def openDirectories(self):
-
-        #dialog = QtGui.QFileDialog()
-        #dialog.setOption(QtGui.QFileDialog.ShowDirsOnly, True)
-        #if dialog.exec_():
-        #    self.setPaths( dialog.selectedFiles() )
 
         while True:
             w = QtGui.QFileDialog(self)
@@ -718,24 +735,27 @@ class Browser(QtGui.QMainWindow):
         if len(tokens) == 0:
             self._count = self._totalCount
             self._collection = self._mediaTrie
-            return True
+        else:
+            self._collectionIsTrie = False
 
-        self._collectionIsTrie = False
+            tmp = []
+            for media in self._mediaTrie.itervalues():
+                matches = 0
+                for token in tokens:
+                    p = re.compile(''.join([token, '(?i)']))
+                    if p.search(media.getName()):
+                        matches += 1
+                if matches > 0:
+                    tmp.append( (-matches, media) )
+            tmp.sort()
+            self._collection = []
+            for matches, media in tmp:
+                self._collection.append(media)
+            self._count = len(self._collection)
 
-        tmp = []
-        for media in self._mediaTrie.itervalues():
-            matches = 0
-            for token in tokens:
-                p = re.compile(''.join([token, '(?i)']))
-                if p.search(media.getName()):
-                    matches += 1
-            if matches > 0:
-                tmp.append( (-matches, media) )
-        tmp.sort()
-        self._collection = []
-        for matches, media in tmp:
-            self._collection.append(media)
-        self._count = len(self._collection)
+        enabled = self._count > 0
+        self._playAction.setEnabled(enabled)
+        self._coverAction.setEnabled(enabled)
 
         return True
 
