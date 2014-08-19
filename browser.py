@@ -1,5 +1,6 @@
 import ConfigParser
 import ctypes
+import errno
 import fnmatch
 import json
 import math
@@ -19,6 +20,15 @@ from OpenGL import GLU, GL
 
 from trie import Node, Trie
 from buttonlineedit import ButtonLineEdit
+
+# mkdir_p from http://stackoverflow.com/questions/600268/mkdir-p-functionality-in-python
+def mkdir_p(path):
+    try:
+        os.makedirs(path)
+    except OSError as exc: # Python >2.5
+        if exc.errno == errno.EEXIST and os.path.isdir(path):
+            pass
+        else: raise
 
 class Browser(QtGui.QMainWindow):
 
@@ -391,6 +401,7 @@ class Browser(QtGui.QMainWindow):
 
                         metadata = media.getMetadata()
                         cover = metadata.downloadCover()
+                        mkdir_p(os.path.dirname(media.getCoverPath()))
                         with open(media.getCoverPath(), 'wb') as f:
                             f.write(cover)
 
@@ -419,11 +430,12 @@ class Browser(QtGui.QMainWindow):
 
     class Media:
 
-        def __init__(self, key, name, year, filePaths):
+        def __init__(self, key, name, year, filePaths, collectionPath):
             self._key = key
             self._name = name
             self._year = year if year is not None else ''
             self._filePaths = filePaths
+            self._collectionPath = collectionPath[1:] if os.path.isabs(collectionPath) else collectionPath
 
         def addFilePaths(self, filePaths): self._filePaths.extend(filePaths)
 
@@ -434,7 +446,7 @@ class Browser(QtGui.QMainWindow):
 
         def getCoverPath(self):
             identifier = ''.join([self._name, '_', self._year])
-            path = os.path.join( Browser._configPath,  identifier)
+            path = os.path.join(Browser._configPath, self._collectionPath, identifier)
             return path
 
         def getCover(self):
@@ -631,7 +643,7 @@ class Browser(QtGui.QMainWindow):
         try: return self.get('extensions').split(',')
         except: return Browser._iniDefaults['extensions'].split(',')
 
-    def addMedia(self, name, filePaths):
+    def addMedia(self, name, filePaths, collectionPath):
         # gets rid of delimiters and tags (as best as possible)
         l = []
         for c in name:
@@ -665,7 +677,7 @@ class Browser(QtGui.QMainWindow):
             node = self._mediaTrie[key]
             node.addFilePaths(filePaths)
         except:
-            node = Browser.Media(key, name, year, filePaths)
+            node = Browser.Media(key, name, year, filePaths, collectionPath)
             self._mediaTrie[key] = node
             self._totalCount += 1
 
@@ -732,7 +744,7 @@ class Browser(QtGui.QMainWindow):
                     # file
                     name, extension = os.path.splitext(subpath)
                     if extension in extensions:
-                        self.addMedia(name, [fullPath])
+                        self.addMedia(name, [fullPath], path)
                 else:
                     # directory
                     filePaths = []
@@ -742,7 +754,7 @@ class Browser(QtGui.QMainWindow):
                             if extension in extensions:
                                 filePaths.append(os.path.join(root, filename))
                     if len(filePaths) == 0: continue
-                    self.addMedia(subpath, filePaths)
+                    self.addMedia(subpath, filePaths, path)
 
         self.buildTrie()
 
