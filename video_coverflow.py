@@ -554,7 +554,7 @@ class VideoCoverflow(QtGui.QMainWindow):
         fullScreenAction.setShortcut('Ctrl+F')
         fullScreenAction.triggered.connect(self.toggleFullScreen)
 
-        indexMenu = QtGui.QMenu()
+        indexMenu = QtGui.QMenu('Browse Alphabetically', self)
         index = QtGui.QToolButton()
         index.setIcon(QtGui.QIcon(VideoCoverflow._indexIcon))
         index.setMenu(indexMenu)
