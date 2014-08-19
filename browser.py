@@ -597,9 +597,14 @@ class Browser(QtGui.QMainWindow):
                 t.setSelectionMode(QtGui.QAbstractItemView.MultiSelection)
             if w.exec_():
                 self.set( 'paths', ''.join(w.selectedFiles()) )
+            else:
+                break
 
             self._previousSearch = None
             self.populate()
+
+            #if self._tileflowCreated:
+            self._tileflow.clear()
 
             if len(self) == 0:
                 msgBox = QtGui.QMessageBox(self)
@@ -612,11 +617,7 @@ class Browser(QtGui.QMainWindow):
             else:
                 # daemon
                 self._tileflow.spawnDownloadCoverDaemon()
-
                 break
-
-        #if self._tileflowCreated:
-        self._tileflow.clear()
 
     def updateFullScreen(self):
         if int(self.get('fullscreen')): self.showFullScreen()
