@@ -498,7 +498,7 @@ class Browser(QtGui.QMainWindow):
 
         # widget to display title
         self._label = QtGui.QLabel()
-        self.statusBar().showMessage('Loading')
+        self.statusBar().showMessage('Indexing directories...')
         self._label.setAlignment(QtCore.Qt.AlignCenter)
         statusBar = QtGui.QStatusBar()
         statusBar.addWidget(self._label, 1)
