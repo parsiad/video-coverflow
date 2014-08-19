@@ -19,7 +19,7 @@ from PySide import QtCore, QtGui, QtOpenGL
 from OpenGL import GLU, GL
 
 from trie import Node, Trie
-from buttonlineedit import ButtonLineEdit
+from button_line_edit import ButtonLineEdit
 
 # mkdir_p from http://stackoverflow.com/questions/600268/mkdir-p-functionality-in-python
 def mkdir_p(path):
