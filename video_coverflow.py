@@ -55,9 +55,9 @@ def mkdir_p(path):
             pass
         else: raise
 
-class Browser(QtGui.QMainWindow):
+class VideoCoverflow(QtGui.QMainWindow):
 
-    _title = 'Media Browser'
+    _title = 'Video Coverflow'
 
     _configDirectory = '.video-coverflow'
     _configPath = os.path.join(os.path.expanduser('~'), _configDirectory)
@@ -148,7 +148,7 @@ class Browser(QtGui.QMainWindow):
             self._hasCleared = True
 
         def minimumSizeHint(self):
-            return QtCore.QSize(Browser.TileflowWidget._minWidth, Browser.TileflowWidget._minHeight)
+            return QtCore.QSize(VideoCoverflow.TileflowWidget._minWidth, VideoCoverflow.TileflowWidget._minHeight)
 
         def sizeHint(self):
             return QtCore.QSize( int(self._browser.get('width')), int(self._browser.get('height')) )
@@ -191,7 +191,7 @@ class Browser(QtGui.QMainWindow):
             # generate lists
             self._missing_tile = GL.glGenLists(1)
             self._lists.add(self._missing_tile)
-            defaultTexture = self.bindTexture(QtGui.QPixmap( Browser._defaultCoverPath ))
+            defaultTexture = self.bindTexture(QtGui.QPixmap( VideoCoverflow._defaultCoverPath ))
             self.generateTile(self._missing_tile, defaultTexture)
 
             for media in self._browser:
@@ -252,15 +252,15 @@ class Browser(QtGui.QMainWindow):
                 GL.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA)
 
                 offset, mid = self.offsetMid()
-                start_pos = mid - Browser.TileflowWidget._visibleTiles
+                start_pos = mid - VideoCoverflow.TileflowWidget._visibleTiles
                 if start_pos < 0:
                     start_pos = 0
-                end_pos = mid + Browser.TileflowWidget._visibleTiles
+                end_pos = mid + VideoCoverflow.TileflowWidget._visibleTiles
                 if end_pos > len(self._browser):
                     end_pos = len(self._browser)
-                for i in range(start_pos, mid)[::Browser.TileflowWidget._direction]:
+                for i in range(start_pos, mid)[::VideoCoverflow.TileflowWidget._direction]:
                     self.drawTile(i, i - offset)
-                for i in range(mid, end_pos)[::-Browser.TileflowWidget._direction]:
+                for i in range(mid, end_pos)[::-VideoCoverflow.TileflowWidget._direction]:
                     self.drawTile(i, i - offset)
 
                 GL.glPopMatrix()
@@ -379,12 +379,12 @@ class Browser(QtGui.QMainWindow):
                 # TODO: make this fluid
                 if event.delta() < 0:
                     scale = float(self._browser.get('scale'))
-                    scale = min(2, scale + Browser.TileflowWidget._dscale)
+                    scale = min(2, scale + VideoCoverflow.TileflowWidget._dscale)
                     self._browser.set('scale', scale)
                     self.updateGL()
                 elif event.delta() > 0:
                     scale = float(self._browser.get('scale'))
-                    scale = max(0.5, scale - Browser.TileflowWidget._dscale)
+                    scale = max(0.5, scale - VideoCoverflow.TileflowWidget._dscale)
                     self._browser.set('scale', scale)
                     self.updateGL()
 
@@ -400,14 +400,14 @@ class Browser(QtGui.QMainWindow):
 
         def drawTile(self, position, offset):
             matrix = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]
-            trans = offset * Browser.TileflowWidget._spreadImage
-            f = offset * Browser.TileflowWidget._flankSpread
-            if (f > Browser.TileflowWidget._flankSpread):
-                f = Browser.TileflowWidget._flankSpread
-            elif (f < -Browser.TileflowWidget._flankSpread):
-                f = -Browser.TileflowWidget._flankSpread
+            trans = offset * VideoCoverflow.TileflowWidget._spreadImage
+            f = offset * VideoCoverflow.TileflowWidget._flankSpread
+            if (f > VideoCoverflow.TileflowWidget._flankSpread):
+                f = VideoCoverflow.TileflowWidget._flankSpread
+            elif (f < -VideoCoverflow.TileflowWidget._flankSpread):
+                f = -VideoCoverflow.TileflowWidget._flankSpread
 
-            matrix[3] = -1 * Browser.TileflowWidget._direction * f
+            matrix[3] = -1 * VideoCoverflow.TileflowWidget._direction * f
             matrix[0] = 1 - abs(f)
             scale = 0.45 * matrix[0]
             trans += f * 1
@@ -447,7 +447,7 @@ class Browser(QtGui.QMainWindow):
                         self._queue.put(k)
 
                         sys.stderr.write(' done\r\n')
-                        time.sleep(Browser._sleep)
+                        time.sleep(VideoCoverflow._sleep)
                     except:
                         sys.stderr.write(' fail\r\n')
                 k += 1
@@ -460,12 +460,12 @@ class Browser(QtGui.QMainWindow):
         _omdbapi = 'http://omdbapi.com/?tomatoes=true&s=%s&y=%s'
 
         def __init__(self, search, year=''):
-            url = Browser.Metadata._omdbapi % (search.replace(' ', '%20'), year)
+            url = VideoCoverflow.Metadata._omdbapi % (search.replace(' ', '%20'), year)
             self._meta = json.load( urlopen( url ) )['Search'][0]
 
         def downloadCover(self):
-            url = Browser.Metadata._imdb % (self._meta['imdbID'])
-            return urlopen( Browser.Metadata._pattern.search( urlopen( url ).read() ).group(1) ).read()
+            url = VideoCoverflow.Metadata._imdb % (self._meta['imdbID'])
+            return urlopen( VideoCoverflow.Metadata._pattern.search( urlopen( url ).read() ).group(1) ).read()
 
     class Media:
 
@@ -485,7 +485,7 @@ class Browser(QtGui.QMainWindow):
 
         def getCoverPath(self):
             identifier = ''.join([self._name, '_', self._year])
-            path = os.path.join(Browser._configPath, self._collectionPath, identifier)
+            path = os.path.join(VideoCoverflow._configPath, self._collectionPath, identifier)
             return path
 
         def getCover(self):
@@ -494,7 +494,7 @@ class Browser(QtGui.QMainWindow):
                 return coverPath
             return None
 
-        def getMetadata(self): return Browser.Metadata(self._name, self._year)
+        def getMetadata(self): return VideoCoverflow.Metadata(self._name, self._year)
 
     class IndexAction(QtGui.QAction):
 
@@ -513,15 +513,15 @@ class Browser(QtGui.QMainWindow):
         sys.stderr.write('initialing... ')
 
         # make config directory
-        if not os.path.isdir(Browser._configPath):
-            os.mkdir(Browser._configPath)
+        if not os.path.isdir(VideoCoverflow._configPath):
+            os.mkdir(VideoCoverflow._configPath)
 
         # load ini file
-        self._config = ConfigParser.SafeConfigParser(Browser._iniDefaults)
-        try: self._config.read(Browser._iniPath)
+        self._config = ConfigParser.SafeConfigParser(VideoCoverflow._iniDefaults)
+        try: self._config.read(VideoCoverflow._iniPath)
         except: pass
-        if not self._config.has_section(Browser._iniSection):
-            self._config.add_section(Browser._iniSection)
+        if not self._config.has_section(VideoCoverflow._iniSection):
+            self._config.add_section(VideoCoverflow._iniSection)
 
         QtGui.QMainWindow.__init__(self, parent)
 
@@ -543,27 +543,27 @@ class Browser(QtGui.QMainWindow):
         statusBar.addWidget(self._label, 1)
         statusBar.setSizeGripEnabled(False)
 
-        self._searchBox = ButtonLineEdit(Browser._clearIcon)
+        self._searchBox = ButtonLineEdit(VideoCoverflow._clearIcon)
         self._searchBox.button.clicked.connect(self.clearQuery)
 
-        openAction = QtGui.QAction(QtGui.QIcon(Browser._openIcon), 'Open...', self)
+        openAction = QtGui.QAction(QtGui.QIcon(VideoCoverflow._openIcon), 'Open...', self)
         openAction.setShortcut('Ctrl+O')
         openAction.triggered.connect(self.openDirectories)
 
-        fullScreenAction = QtGui.QAction(QtGui.QIcon(Browser._fullScreenIcon), 'Toggle Fullscreen', self)
+        fullScreenAction = QtGui.QAction(QtGui.QIcon(VideoCoverflow._fullScreenIcon), 'Toggle Fullscreen', self)
         fullScreenAction.setShortcut('Ctrl+F')
         fullScreenAction.triggered.connect(self.toggleFullScreen)
 
         indexMenu = QtGui.QMenu()
         index = QtGui.QToolButton()
-        index.setIcon(QtGui.QIcon(Browser._indexIcon))
+        index.setIcon(QtGui.QIcon(VideoCoverflow._indexIcon))
         index.setMenu(indexMenu)
         index.setPopupMode(QtGui.QToolButton.InstantPopup)
 
-        self._coverAction = QtGui.QAction(QtGui.QIcon(Browser._imageIcon), 'Change Cover', self)
+        self._coverAction = QtGui.QAction(QtGui.QIcon(VideoCoverflow._imageIcon), 'Change Cover', self)
         self._coverAction.setEnabled(False)
 
-        self._playAction = QtGui.QAction(QtGui.QIcon(Browser._playIcon), 'Play', self)
+        self._playAction = QtGui.QAction(QtGui.QIcon(VideoCoverflow._playIcon), 'Play', self)
         self._playAction.setEnabled(False)
 
         toolBar = self.addToolBar('Toolbar')
@@ -602,7 +602,7 @@ class Browser(QtGui.QMainWindow):
         timer.timeout.connect(self.populate)
         timer.start(100)
 
-        self._tileflow = Browser.TileflowWidget(self, self)
+        self._tileflow = VideoCoverflow.TileflowWidget(self, self)
         self._tileflow.setFocus()
         #self._tileflowCreated = True
         self.setCentralWidget(self._tileflow)
@@ -611,7 +611,7 @@ class Browser(QtGui.QMainWindow):
         self._coverAction.triggered.connect(self._tileflow.changeCover)
 
         for c in ['0', 'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z']:
-            indexC = Browser.IndexAction(c, self._tileflow, self);
+            indexC = VideoCoverflow.IndexAction(c, self._tileflow, self);
             indexMenu.addAction(indexC);
 
         # daemon
@@ -686,11 +686,11 @@ class Browser(QtGui.QMainWindow):
     def __len__(self): return self._count
 
     def get(self, key):
-        try: return self._config.get(Browser._iniSection, key)
-        except: return Browser._iniDefaults[key]
+        try: return self._config.get(VideoCoverflow._iniSection, key)
+        except: return VideoCoverflow._iniDefaults[key]
 
     def set(self, key, value):
-        self._config.set(Browser._iniSection, key, str(value))
+        self._config.set(VideoCoverflow._iniSection, key, str(value))
 
     def getPaths(self):
         try: return [ path for path in self.get('paths').split(',') if path.strip() != '' ]
@@ -698,27 +698,27 @@ class Browser(QtGui.QMainWindow):
 
     def getExtensions(self):
         try: return self.get('extensions').split(',')
-        except: return Browser._iniDefaults['extensions'].split(',')
+        except: return VideoCoverflow._iniDefaults['extensions'].split(',')
 
     def addMedia(self, name, filePaths, collectionPath):
         # gets rid of delimiters and tags (as best as possible)
         l = []
         for c in name:
-            if c in Browser._delimiters:
+            if c in VideoCoverflow._delimiters:
                 l.append(' ')
             else:
                 l.append(c)
-        tokens = Browser._pattern.match( ''.join(l) ).group(2).split(' ')
+        tokens = VideoCoverflow._pattern.match( ''.join(l) ).group(2).split(' ')
         l = []
         stop = False
         year = None
         for token in tokens:
-            m = Browser._year.search(token)
+            m = VideoCoverflow._year.search(token)
             if m:
                 stop = True
                 year = m.group(1)
                 break
-            for halt in Browser._halts:
+            for halt in VideoCoverflow._halts:
                 if halt.search(token):
                     stop = True
                     break
@@ -734,7 +734,7 @@ class Browser(QtGui.QMainWindow):
             node = self._mediaTrie[key]
             node.addFilePaths(filePaths)
         except:
-            node = Browser.Media(key, name, year, filePaths, collectionPath)
+            node = VideoCoverflow.Media(key, name, year, filePaths, collectionPath)
             self._mediaTrie[key] = node
             self._totalCount += 1
 
