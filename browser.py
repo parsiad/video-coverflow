@@ -471,6 +471,8 @@ class Browser(QtGui.QMainWindow):
             self._tileflow.goToCharacter(self._c)
 
     def __init__(self, parent=None):
+        sys.stderr.write('initialing... ')
+
         # make config directory
         if not os.path.isdir(Browser._configPath):
             os.mkdir(Browser._configPath)
@@ -491,10 +493,13 @@ class Browser(QtGui.QMainWindow):
         self.setStyleSheet(self.get('css'));
 
         # status bar
-        self._label = QtGui.QLabel()
-        #self._label.setFont( QtGui.QFont( self.get('fontFamily'), int(self.get('fontSize')) ) )
-        self._label.setAlignment(QtCore.Qt.AlignCenter)
+        self._progress = QtGui.QProgressBar()
+        self.statusBar().addPermanentWidget(self._progress)
 
+        # widget to display title
+        self._label = QtGui.QLabel()
+        self.statusBar().showMessage('Loading')
+        self._label.setAlignment(QtCore.Qt.AlignCenter)
         statusBar = QtGui.QStatusBar()
         statusBar.addWidget(self._label, 1)
         statusBar.setSizeGripEnabled(False)
@@ -540,8 +545,18 @@ class Browser(QtGui.QMainWindow):
 
         self._tileflowCreated = False
 
-        # populate
-        self.populate()
+        sys.stderr.write('done!\r\n')
+
+        # initialize the library as empty
+        self._count = 0
+        self._collectionIsTrie = False
+        self._collection = []
+
+        # fire an event later to populate the library
+        timer = QtCore.QTimer(self)
+        timer.setSingleShot(True)
+        timer.timeout.connect(self.populate)
+        timer.start(100)
 
         self._tileflow = Browser.TileflowWidget(self, self)
         self._tileflow.setFocus()
@@ -600,7 +615,8 @@ class Browser(QtGui.QMainWindow):
 
                 break
 
-        if self._tileflowCreated: self._tileflow.clear()
+        #if self._tileflowCreated:
+        self._tileflow.clear()
 
     def updateFullScreen(self):
         if int(self.get('fullscreen')): self.showFullScreen()
@@ -723,6 +739,8 @@ class Browser(QtGui.QMainWindow):
         return True
 
     def populate(self):
+        sys.stderr.write('populating... ')
+
         self._searchBox.setText('')
 
         self._totalCount = 0
@@ -730,13 +748,20 @@ class Browser(QtGui.QMainWindow):
 
         extensions = self.getExtensions()
 
+        self.statusBar().show()
+
         for path in self.getPaths():
             # check to make sure this is really a directory
             if not os.path.isdir(path):
                 sys.stderr.write('warning: media directory `%s` was not found or is not a directory; skipping\r\n' % (path))
                 continue
 
-            for subpath in os.listdir(path):
+            subpaths = os.listdir(path)
+            self._progress.setMaximum(len(subpaths))
+            self._progress.setValue(0)
+            for subpath in subpaths:
+                self._progress.setValue(self._progress.value() + 1)
+
                 # full path to directory or file
                 fullPath = os.path.join(path, subpath)
 
@@ -757,6 +782,9 @@ class Browser(QtGui.QMainWindow):
                     self.addMedia(subpath, filePaths, path)
 
         self.buildTrie()
+        self._tileflow.clear()
+
+        self.statusBar().hide()
 
         if len(self) == 0:
             self._searchBox.setPlaceholderText('')
@@ -766,4 +794,6 @@ class Browser(QtGui.QMainWindow):
             self._searchBox.setPlaceholderText('Filter by keywords')
             self._searchBox.setEnabled(True)
             self._searchBox.show()
+
+        sys.stderr.write('done!\r\n')
 
