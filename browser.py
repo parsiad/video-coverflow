@@ -543,7 +543,7 @@ class Browser(QtGui.QMainWindow):
         toolBar.setPalette(palette);
         toolBar.setAutoFillBackground(True);
 
-        self._tileflowCreated = False
+        #self._tileflowCreated = False
 
         sys.stderr.write('done!\r\n')
 
@@ -560,7 +560,7 @@ class Browser(QtGui.QMainWindow):
 
         self._tileflow = Browser.TileflowWidget(self, self)
         self._tileflow.setFocus()
-        self._tileflowCreated = True
+        #self._tileflowCreated = True
         self.setCentralWidget(self._tileflow)
 
         playAction.triggered.connect(self._tileflow.play)
