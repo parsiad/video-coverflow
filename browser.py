@@ -72,13 +72,13 @@ class Browser(QtGui.QMainWindow):
 
     _sleep = 1
 
-    _defaultCoverPath = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'film.png' )
-    _openIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'open.png' )
-    _fullScreenIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'fullscreen.png' )
-    _clearIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'clear.png' )
-    _indexIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'index.png' )
-    _imageIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'image.png' )
-    _playIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'play.png' )
+    _defaultCoverPath = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'img/film.png' )
+    _openIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'img/open.png' )
+    _fullScreenIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'img/fullscreen.png' )
+    _clearIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'img/clear.png' )
+    _indexIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'img/index.png' )
+    _imageIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'img/image.png' )
+    _playIcon = os.path.join( os.path.abspath(os.path.dirname(__file__)), 'img/play.png' )
 
     class TileflowWidget(QtOpenGL.QGLWidget):
 
