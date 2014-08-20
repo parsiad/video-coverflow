@@ -469,12 +469,22 @@ class VideoCoverflow(QtGui.QMainWindow):
 
     class Media:
 
+        _pattern = re.compile('^\\\\*([^\\\\]*)$')
+
         def __init__(self, key, name, year, filePaths, collectionPath):
             self._key = key
             self._name = name
             self._year = year if year is not None else ''
             self._filePaths = filePaths
-            self._collectionPath = collectionPath[1:] if os.path.isabs(collectionPath) else collectionPath
+
+            absPath = os.path.abspath(collectionPath)
+            if os.name == 'nt':
+                tmp = absPath.split(':')
+                
+                m = VideoCoverflow.Media._pattern.match(tmp[1])
+                self._collectionPath = os.path.join(tmp[0], m.group(1))
+            else:
+                self._collectionPath = absPath[1:]
 
         def addFilePaths(self, filePaths): self._filePaths.extend(filePaths)
 
