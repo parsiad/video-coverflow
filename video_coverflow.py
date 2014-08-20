@@ -480,7 +480,7 @@ class VideoCoverflow(QtGui.QMainWindow):
             absPath = os.path.abspath(collectionPath)
             if os.name == 'nt':
                 tmp = absPath.split(':')
-                
+
                 m = VideoCoverflow.Media._pattern.match(tmp[1])
                 self._collectionPath = os.path.join(tmp[0], m.group(1))
             else:
