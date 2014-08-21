@@ -1,4 +1,3 @@
-import ConfigParser
 import ctypes
 import errno
 import fnmatch
@@ -14,13 +13,19 @@ import sys
 import time
 from threading import Thread
 
-from urllib2 import urlopen
 from xml.etree import ElementTree
 
-from PySide import QtCore, QtGui, QtOpenGL
+from PySide import QtCore, QtGui, QtOpenGL # TODO: Why not imported?
 from OpenGL import GLU, GL
 
 from trie import Node, Trie
+
+if sys.version_info.major >= 3:
+    from configparser import SafeConfigParser
+    from urllib.request import urlopen
+else:
+    from ConfigParser import SafeConfigParser
+    from urllib2 import urlopen
 
 # modified from http://stackoverflow.com/questions/12462562/how-to-do-inside-in-qlineedit-insert-the-button-pyqt4
 class ButtonLineEdit(QtGui.QLineEdit):
