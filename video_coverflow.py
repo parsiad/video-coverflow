@@ -827,7 +827,7 @@ class VideoCoverflow(QtGui.QMainWindow):
                 if os.path.isfile(fullPath):
                     # file
                     name, extension = os.path.splitext(subpath)
-                    if extension in extensions:
+                    if extension.lower() in extensions:
                         self.addMedia(name, [fullPath], path)
                 else:
                     # directory
@@ -835,7 +835,7 @@ class VideoCoverflow(QtGui.QMainWindow):
                     for root, directories, filenames in os.walk(fullPath):
                         for filename in filenames:
                             name, extension = os.path.splitext(filename)
-                            if extension in extensions:
+                            if extension.lower() in extensions:
                                 filePaths.append(os.path.join(root, filename))
                     if len(filePaths) == 0: continue
                     self.addMedia(subpath, filePaths, path)
