@@ -532,7 +532,7 @@ class VideoCoverflow(QtGui.QMainWindow):
             os.mkdir(VideoCoverflow._configPath)
 
         # load ini file
-        self._config = ConfigParser.SafeConfigParser(VideoCoverflow._iniDefaults)
+        self._config = SafeConfigParser(VideoCoverflow._iniDefaults)
         try: self._config.read(VideoCoverflow._iniPath)
         except: pass
         if not self._config.has_section(VideoCoverflow._iniSection):
