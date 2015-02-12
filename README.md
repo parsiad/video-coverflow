@@ -20,7 +20,7 @@ First, clone the repository by
 
 Then, simply run
 
-```python video-coverflow```
+```python video-coverflow/```
 
 Usage
 -----
