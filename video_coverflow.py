@@ -525,7 +525,7 @@ class VideoCoverflow(QtGui.QMainWindow):
             self._tileflow.goToCharacter(self._c)
 
     def __init__(self, parent=None):
-        sys.stderr.write('initialing... ')
+        sys.stderr.write('initializing... ')
 
         # make config directory
         if not os.path.isdir(VideoCoverflow._configPath):
