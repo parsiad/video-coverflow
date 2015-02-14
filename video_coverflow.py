@@ -540,6 +540,8 @@ class VideoCoverflow(QtGui.QMainWindow):
 
         QtGui.QMainWindow.__init__(self, parent)
 
+        self.setMinimumSize(800, 600)
+
         # window title
         self.setWindowTitle('Video Coverflow')
 
@@ -636,7 +638,11 @@ class VideoCoverflow(QtGui.QMainWindow):
 
         self.updateFullScreen()
 
-    def setMessage(self, message): self._label.setText(message)
+    def setMessage(self, message):
+        if len(message) > 32:
+            self._label.setText(message[0:29] + '...')
+        else:
+            self._label.setText(message)
 
     def openDirectories(self):
 
@@ -855,4 +861,3 @@ class VideoCoverflow(QtGui.QMainWindow):
             self._searchBox.show()
 
         sys.stderr.write('done!\r\n')
-
