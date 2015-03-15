@@ -21,8 +21,11 @@ from OpenGL import GLU, GL
 from trie import Node, Trie
 
 if sys.version_info.major >= 3:
-    from configparser import SafeConfigParser
-    from urllib.request import urlopen
+    #from configparser import SafeConfigParser
+    #from urllib.request import urlopen
+    sys.exit("%s requires python 2.x.x" % os.path.basename(__file__))
+
+    # TODO: Python3 support
 else:
     from ConfigParser import SafeConfigParser
     from urllib2 import urlopen
