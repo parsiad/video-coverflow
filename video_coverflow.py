@@ -20,7 +20,7 @@ from OpenGL import GLU, GL
 
 from trie import Node, Trie
 
-if sys.version_info.major >= 3:
+if sys.version_info[0] >= 3:
     #from configparser import SafeConfigParser
     #from urllib.request import urlopen
     sys.exit("%s requires python 2.x.x" % os.path.basename(__file__))
